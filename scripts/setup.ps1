@@ -15,61 +15,76 @@ function Refresh-Path {
 }
 
 function Ensure-WinGet {
+    # WinGet is normally delivered through Microsoft App Installer. Microsoft
+    # also provides the supported PowerShell bootstrap/repair path through
+    # Microsoft.WinGet.Client when App Installer/WinGet is absent or broken.
     if (Test-CommandExists 'winget') {
-        Write-Host "WinGet already available."
-        return
+        try {
+            $version = (& winget --version 2>$null)
+            if ($LASTEXITCODE -eq 0 -and $version) {
+                Write-Host "WinGet already available: $version"
+                return
+            }
+        } catch {
+            # Continue to the supported repair path below.
+        }
     }
 
-    Write-Host "WinGet is missing. Checking App Installer registration..." -ForegroundColor Yellow
+    Write-Host "WinGet is missing or not functioning. Bootstrapping WinGet using Microsoft's supported PowerShell repair path..." -ForegroundColor Yellow
 
     try {
-        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 2
-        Refresh-Path
+        # Windows PowerShell 5.1 may need TLS 1.2 explicitly for PSGallery.
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+        $nuget = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
+        if (-not $nuget) {
+            Write-Host "Installing NuGet package provider..."
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -ErrorAction Stop | Out-Null
+        }
+
+        $module = Get-Module -ListAvailable -Name Microsoft.WinGet.Client | Select-Object -First 1
+        if (-not $module) {
+            Write-Host "Installing Microsoft.WinGet.Client from PowerShell Gallery..."
+            Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery -AllowClobber -ErrorAction Stop
+        } else {
+            Write-Host "Microsoft.WinGet.Client module already available: $($module.Version)"
+        }
+
+        Import-Module Microsoft.WinGet.Client -Force -ErrorAction Stop
+        Write-Host "Repairing/bootstrapping WinGet..."
+        Repair-WinGetPackageManager -Force -Latest -ErrorAction Stop
     } catch {
-        # Registration can fail when App Installer is not installed; continue to download path.
-    }
-
-    if (Test-CommandExists 'winget') {
-        Write-Host "WinGet registered successfully."
-        return
-    }
-
-    Write-Host "App Installer/WinGet is not installed. Downloading Microsoft's App Installer package..." -ForegroundColor Yellow
-
-    $tempDir = Join-Path $env:TEMP 'aegis-winget-bootstrap'
-    New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
-    $bundle = Join-Path $tempDir 'Microsoft.DesktopAppInstaller.msixbundle'
-
-    try {
-        Invoke-WebRequest -Uri 'https://aka.ms/getwinget' -OutFile $bundle -UseBasicParsing
-    } catch {
-        throw "Unable to download Microsoft App Installer/WinGet. Check network access and rerun setup. $($_.Exception.Message)"
-    }
-
-    try {
-        Add-AppxPackage -Path $bundle -ErrorAction Stop
-    } catch {
-        throw "Microsoft App Installer installation failed. Windows may require an updated App Installer package, supported Windows build, or a reboot. $($_.Exception.Message)"
+        throw "WinGet bootstrap/repair failed. Windows must support App Installer/WinGet and the machine needs network access and administrator privileges. $($_.Exception.Message)"
     }
 
     Start-Sleep -Seconds 3
     Refresh-Path
 
-    if (-not (Test-CommandExists 'winget')) {
-        $candidate = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe'
+    $wingetCandidates = @(
+        (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe'),
+        (Join-Path $env:ProgramFiles 'WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe')
+    )
+
+    foreach ($candidate in $wingetCandidates) {
         if (Test-Path $candidate) {
-            $env:Path = "$([System.IO.Path]::GetDirectoryName($candidate));$env:Path"
+            $candidateDir = Split-Path $candidate -Parent
+            if ($env:Path -notlike "*$candidateDir*") {
+                $env:Path = "$candidateDir;$env:Path"
+            }
         }
     }
 
     if (-not (Test-CommandExists 'winget')) {
-        throw "WinGet was installed/registered but is not available in this PowerShell session. Restart PowerShell and rerun setup."
+        throw "WinGet bootstrap completed but winget.exe is not available in this PowerShell session. Close PowerShell, open a new elevated PowerShell window, and rerun setup."
     }
 
-    Write-Host "WinGet ready."
-}
+    $version = (& winget --version 2>$null)
+    if ($LASTEXITCODE -ne 0 -or -not $version) {
+        throw "WinGet is present but not functioning. Rerun setup from a new elevated PowerShell session."
+    }
 
+    Write-Host "WinGet ready: $version"
+}
 function Install-With-WinGet {
     param(
         [Parameter(Mandatory=$true)][string]$Id,
