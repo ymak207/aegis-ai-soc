@@ -1,0 +1,56 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.angular/
+coverage/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs / runtime
+*.log
+logs/
+
+# Local data / models / caches
+models/
+mlruns/
+data/runtime/
+data/generated/
+data/cache/
+docker-data/
+volumes/
+
+# Certificates / keys
+*.pem
+*.key
+*.crt
+
+# Patch / temporary files
+*.patch
+*.rej
+*.orig
+*.tmp
+
+# Local test artifacts
+playwright-report/
+test-results/
