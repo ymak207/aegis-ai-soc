@@ -63,3 +63,15 @@ test-results/
 .tmp/
 tmp/
 .envrc
+
+# AEGIS application exclusions
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+coverage/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.patch

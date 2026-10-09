@@ -1,0 +1,86 @@
+name: aegis-ai-soc
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aegis}
+      POSTGRES_USER: ${POSTGRES_USER:-aegis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-change-me}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: ["redis_data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+  api:
+    build: ./backend
+    environment:
+      AEGIS_ENV: ${AEGIS_ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aegis}:${POSTGRES_PASSWORD:-local-dev-change-me}@postgres:5432/${POSTGRES_DB:-aegis}
+      REDIS_URL: redis://redis:6379/0
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_BASE_URL: /api
+    ports: ["127.0.0.1:5173:5173"]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3
+    profiles: ["analytics"]
+    environment:
+      CLICKHOUSE_DB: aegis
+      CLICKHOUSE_USER: aegis
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-local-analytics-change-me}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports: ["127.0.0.1:8123:8123"]
+    volumes: ["clickhouse_data:/var/lib/clickhouse"]
+    ulimits:
+      nofile: {soft: 262144, hard: 262144}
+    restart: unless-stopped
+  qdrant:
+    image: qdrant/qdrant:latest
+    profiles: ["ai"]
+    ports: ["127.0.0.1:6333:6333"]
+    volumes: ["qdrant_data:/qdrant/storage"]
+    restart: unless-stopped
+  minio:
+    image: minio/minio:latest
+    profiles: ["data"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-aegis-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local-minio-change-me}
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes: ["minio_data:/data"]
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  redis_data:
+  clickhouse_data:
+  qdrant_data:
+  minio_data:
