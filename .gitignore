@@ -54,3 +54,12 @@ volumes/
 # Local test artifacts
 playwright-report/
 test-results/
+
+# Linux runtime and Docker
+*.pid
+*.sock
+.cache/
+.cache-*/
+.tmp/
+tmp/
+.envrc
