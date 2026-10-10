@@ -15,7 +15,7 @@ if [[ "$ready" != 1 ]]; then echo "API readiness timed out; recent logs:" >&2; s
 cat /tmp/aegis-ready.json >&2
 curl --fail --silent http://127.0.0.1:8000/api/v1 >&2
 echo
-curl --fail --silent --output /dev/null --write-out 'Frontend HTTP %{http_code}\n' http://127.0.0.1:5173/ >&2
+curl --noproxy '*' --fail --silent --show-error --output /dev/null --write-out 'Frontend HTTP %{http_code}\n' http://127.0.0.1:5173/ >&2
 echo
 sudo docker compose exec -T api python -m pytest -q /app/tests
 echo "APPLICATION VERIFICATION PASSED" >&2

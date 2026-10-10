@@ -29,8 +29,14 @@ services:
     build: ./backend
     environment:
       AEGIS_ENV: ${AEGIS_ENV:-development}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-aegis}:${POSTGRES_PASSWORD:-local-dev-change-me}@postgres:5432/${POSTGRES_DB:-aegis}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-aegis}
+      DB_USER: ${POSTGRES_USER:-aegis}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-change-me}
       REDIS_URL: redis://redis:6379/0
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
     ports: ["127.0.0.1:8000:8000"]
     depends_on:
       postgres: {condition: service_healthy}
@@ -67,6 +73,58 @@ services:
     profiles: ["ai"]
     ports: ["127.0.0.1:6333:6333"]
     volumes: ["qdrant_data:/qdrant/storage"]
+    restart: unless-stopped
+  kafka:
+    image: apache/kafka:3.9.0
+    profiles: ["streaming"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports: ["127.0.0.1:9092:9092"]
+    volumes: ["kafka_data:/var/lib/kafka/data"]
+    restart: unless-stopped
+  neo4j:
+    image: neo4j:5-community
+    profiles: ["graph"]
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/change-this-neo4j-password}
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+    ports: ["127.0.0.1:7474:7474", "127.0.0.1:7687:7687"]
+    volumes: ["neo4j_data:/data"]
+    restart: unless-stopped
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ai"]
+    ports: ["127.0.0.1:11434:11434"]
+    volumes: ["ollama_data:/root/.ollama"]
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    profiles: ["observability"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    ports: ["127.0.0.1:9090:9090"]
+    volumes: ["./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro", "prometheus_data:/prometheus"]
+    restart: unless-stopped
+  grafana:
+    image: grafana/grafana:11.5.2
+    profiles: ["observability"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-this-grafana-password}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports: ["127.0.0.1:3000:3000"]
+    volumes: ["grafana_data:/var/lib/grafana"]
+    depends_on: [prometheus]
     restart: unless-stopped
   minio:
     image: minio/minio:latest
