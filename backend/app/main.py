@@ -295,7 +295,7 @@ def list_alerts(status: str | None = "open", limit: int = Query(default=100, ge=
     with connect() as conn:
         rows = conn.execute("""SELECT a.id,a.event_id,a.rule_id,a.title,a.severity,a.status,a.description,a.created_at,
             e.event_type,e.src_ip,e.username,e.host,e.message FROM alerts a JOIN security_events e ON e.id=a.event_id
-            WHERE (%s IS NULL OR a.status=%s) ORDER BY a.created_at DESC LIMIT %s""", (status,status,limit)).fetchall()
+            WHERE (%s::text IS NULL OR a.status=%s) ORDER BY a.created_at DESC LIMIT %s""", (status,status,limit)).fetchall()
     keys = ["id","event_id","rule_id","title","severity","status","description","created_at","event_type","src_ip","username","host","message"]
     return {"items": [dict(zip(keys,r)) for r in rows]}
 
