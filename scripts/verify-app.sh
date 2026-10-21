@@ -18,4 +18,7 @@ echo
 curl --noproxy '*' --fail --silent --show-error --output /dev/null --write-out 'Frontend HTTP %{http_code}\n' http://127.0.0.1:5173/ >&2
 echo
 sudo docker compose exec -T api python -m pytest -q /app/tests
+echo "== Verify frontend TypeScript and production build =="
+sudo docker compose exec -T frontend npm test
+sudo docker compose exec -T frontend npm run build
 echo "APPLICATION VERIFICATION PASSED" >&2

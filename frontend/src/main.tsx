@@ -2,113 +2,146 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 
-type Alert = { id: string; title: string; severity: string; status: string; created_at: string; message: string; src_ip?: string };
-type CaseItem = { id: string; title: string; severity: string; status: string; assignee?: string };
+type Alert = { id: string; title: string; severity: string; status: string; created_at: string; description?: string; message?: string; src_ip?: string; rule_id?: string; event_type?: string };
+type CaseItem = { id: string; title: string; severity: string; status: string; assignee?: string; description?: string };
 type Overview = { events: number; alerts_open: number; alerts_critical: number; cases_open: number; indicators: number; documents: number };
+type Indicator = { id: string; indicator_type: string; value: string; confidence: number; source: string; description: string };
+type DocumentItem = { id: string; title: string; source: string; content?: string; score?: number };
+type PlatformStatus = { api: string; version: string; readiness: Record<string, string>; metrics: Record<string, number | null>; capabilities: string[]; integrations: { name: string; state: string; detail: string }[] };
+type Page = "overview" | "detections" | "knowledge" | "platform";
 const API = "/api/v1";
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers || {}) } });
   if (!response.ok) throw new Error((await response.text()).slice(0, 250) || `HTTP ${response.status}`);
   return response.json() as Promise<T>;
 }
+const fmt = (n: number | null | undefined) => n == null ? "—" : new Intl.NumberFormat().format(n);
 
 function App() {
+  const [page, setPage] = React.useState<Page>("overview");
   const [status, setStatus] = React.useState("Connecting");
   const [overview, setOverview] = React.useState<Overview | null>(null);
   const [alerts, setAlerts] = React.useState<Alert[]>([]);
   const [cases, setCases] = React.useState<CaseItem[]>([]);
+  const [indicators, setIndicators] = React.useState<Indicator[]>([]);
+  const [documents, setDocuments] = React.useState<DocumentItem[]>([]);
   const [message, setMessage] = React.useState("");
+  const [error, setError] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [eventType, setEventType] = React.useState("authentication_failure");
   const [eventMessage, setEventMessage] = React.useState("Multiple failed logins detected for privileged account");
   const [question, setQuestion] = React.useState("Investigate repeated authentication failures and recommend next steps.");
-  const [investigation, setInvestigation] = React.useState("");
+  const [investigation, setInvestigation] = React.useState<Record<string, unknown> | null>(null);
+  const [indicatorType, setIndicatorType] = React.useState("ip");
+  const [indicatorValue, setIndicatorValue] = React.useState("");
+  const [docTitle, setDocTitle] = React.useState("");
+  const [docContent, setDocContent] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState("authentication");
+  const [searchResults, setSearchResults] = React.useState<DocumentItem[]>([]);
+  const [platform, setPlatform] = React.useState<PlatformStatus | null>(null);
 
   const refresh = React.useCallback(async () => {
     try {
-      const [o, a, c] = await Promise.all([
+      const [o, a, c, i, d] = await Promise.all([
         request<Overview>(`${API}/overview`), request<{items: Alert[]}>(`${API}/alerts?status=open&limit=25`),
-        request<{items: CaseItem[]}>(`${API}/cases?limit=10`)
+        request<{items: CaseItem[]}>(`${API}/cases?limit=10`), request<{items: Indicator[]}>(`${API}/intel/indicators?limit=100`),
+        request<{items: DocumentItem[]}>(`${API}/knowledge/search?q=security&limit=20`)
       ]);
-      setOverview(o); setAlerts(a.items); setCases(c.items); setStatus("Connected"); setMessage("");
-    } catch (error) { setStatus("Unavailable"); setMessage(error instanceof Error ? error.message : "API request failed"); }
+      setOverview(o); setAlerts(a.items); setCases(c.items); setIndicators(i.items);
+      // Search endpoint returns only matching documents, so its count is not the document inventory.
+      setDocuments(d.items); setStatus("Connected"); setError("");
+    } catch (e) { setStatus("Unavailable"); setError(e instanceof Error ? e.message : "API request failed"); }
   }, []);
-
+  const refreshPlatform = React.useCallback(async () => {
+    try {
+      const [health, info, metricText, tools] = await Promise.all([
+        request<{status: string; checks: Record<string, string>}>('/health/ready'), request<{version: string; capabilities: string[]}>(API),
+        fetch('/metrics').then(r => r.ok ? r.text() : Promise.reject(new Error('metrics endpoint unavailable'))),
+        request<{tools: unknown[]}>(`${API}/mcp/tools`)
+      ]);
+      const parsed: Record<string, number | null> = {};
+      for (const line of metricText.split('\n')) { const m = line.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*)\s+([0-9.eE+-]+)$/); if (m) parsed[m[1]] = Number(m[2]); }
+      setPlatform({ api: health.status, version: info.version, readiness: health.checks, metrics: parsed, capabilities: info.capabilities,
+        integrations: [
+          {name:"PostgreSQL",state:health.checks.postgres === "ok" ? "online" : "offline",detail:"Persistent event, alert, case and audit records"},
+          {name:"Redis",state:health.checks.redis === "ok" ? "online" : "offline",detail:"Cache / queue dependency health probe"},
+          {name:"Local LLM · Ollama",state:"optional",detail:"Configured as optional; verify model availability before inference"},
+          {name:"Vector retrieval · Qdrant",state:"profile",detail:"Optional profile; vector ingestion is not wired into baseline retrieval"},
+          {name:"Graph · Neo4j",state:"profile",detail:"Optional profile; graph model / graph analytics are not wired yet"},
+          {name:"Streaming · Kafka",state:"profile",detail:"Optional profile; core event ingestion currently writes directly to PostgreSQL"},
+          {name:"MCP tools",state:tools.tools.length ? "catalog" : "offline",detail:`HTTP tool catalog contains ${tools.tools.length} tools; this is not a full MCP transport`},
+          {name:"MLflow / model registry",state:"planned",detail:"Not installed or connected in this baseline"},
+        ] });
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not load platform status"); }
+  }, []);
   React.useEffect(() => { void refresh(); const id = window.setInterval(() => void refresh(), 15000); return () => window.clearInterval(id); }, [refresh]);
+  React.useEffect(() => { if (page === "platform") void refreshPlatform(); }, [page, refreshPlatform]);
 
+  async function action(work: () => Promise<void>, success?: string) {
+    setBusy(true); setMessage(""); setError("");
+    try { await work(); if (success) setMessage(success); await refresh(); if (page === "platform") await refreshPlatform(); }
+    catch (e) { setError(e instanceof Error ? e.message : "Request failed"); }
+    finally { setBusy(false); }
+  }
   async function simulateEvent() {
-    setBusy(true); setMessage("");
-    try {
-      await request(`${API}/events`, { method: "POST", body: JSON.stringify({
-        source: "aegis-demo", event_type: eventType, severity: "high", username: "demo-admin",
-        src_ip: "198.51.100.23", host: "demo-endpoint-01", message: eventMessage,
-        raw: { simulation: true, dataset: "safe-synthetic" }
-      }) });
-      setMessage("Synthetic event submitted; detections refreshed."); await refresh();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Event submission failed"); }
-    finally { setBusy(false); }
+    await action(async () => { await request(`${API}/events`, { method: "POST", body: JSON.stringify({ source:"aegis-demo", event_type:eventType, severity:"high", username:"demo-admin", src_ip:"198.51.100.23", host:"demo-endpoint-01", message:eventMessage, raw:{simulation:true,dataset:"safe-synthetic"} }) }); }, "Synthetic event submitted. Refreshing detections.");
   }
-
   async function createCase(alert?: Alert) {
-    setBusy(true);
-    try {
-      await request(`${API}/cases`, { method: "POST", body: JSON.stringify({
-        title: alert ? `Investigation: ${alert.title}` : "Analyst-created investigation",
-        severity: alert?.severity || "medium", description: alert?.message || "Created from AEGIS console",
-        alert_ids: alert ? [alert.id] : []
-      }) });
-      setMessage("Case created."); await refresh();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Case creation failed"); }
-    finally { setBusy(false); }
+    await action(async () => { await request(`${API}/cases`, { method:"POST", body:JSON.stringify({ title:alert ? `Investigation: ${alert.title}` : "Analyst-created investigation", severity:alert?.severity || "medium", description:alert?.description || alert?.message || "Created from AEGIS console", alert_ids:alert ? [alert.id] : [] }) }); }, "Case created.");
   }
-
-  async function runInvestigation() {
-    setBusy(true);
-    try {
-      const result = await request<Record<string, unknown>>(`${API}/investigations`, { method: "POST", body: JSON.stringify({ question }) });
-      setInvestigation(JSON.stringify(result, null, 2));
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Investigation failed"); }
-    finally { setBusy(false); }
+  async function runInvestigation(alert?: Alert) {
+    await action(async () => { const result = await request<Record<string, unknown>>(`${API}/investigations`, { method:"POST", body:JSON.stringify({question, alert_id:alert?.id}) }); setInvestigation(result); }, "Investigation completed; review the evidence and limitations.");
   }
+  async function addIndicator(e: React.FormEvent) {
+    e.preventDefault(); await action(async () => { await request(`${API}/intel/indicators`, {method:"POST",body:JSON.stringify({indicator_type:indicatorType,value:indicatorValue,confidence:70,source:"analyst-console",description:"Added through AEGIS UI"})}); setIndicatorValue(""); }, "Threat indicator saved.");
+  }
+  async function addDocument(e: React.FormEvent) {
+    e.preventDefault(); await action(async () => { await request(`${API}/knowledge/documents`, {method:"POST",body:JSON.stringify({title:docTitle,content:docContent,source:"analyst-console"})}); setDocTitle(""); setDocContent(""); }, "Knowledge document saved.");
+  }
+  async function searchKnowledge(e: React.FormEvent) { e.preventDefault(); await action(async () => { const r=await request<{items:DocumentItem[]}>(`${API}/knowledge/search?q=${encodeURIComponent(searchQuery)}&limit=10`); setSearchResults(r.items); }, "Knowledge search complete."); }
 
-  return <main className="shell">
-    <header className="topbar"><div className="brand-mark">A</div><div><strong>AEGIS</strong><span> / AI SOC</span></div>
-      <div className="status"><i className={`dot ${status === "Connected" ? "online" : ""}`} />API {status}<button className="ghost" onClick={() => void refresh()}>Refresh</button></div></header>
-    <section className="hero"><p className="eyebrow">SECURITY OPERATIONS PLATFORM · LOCAL DEVELOPMENT</p>
-      <h1>See the signal.<br/><span>Understand the threat.</span></h1>
-      <p className="intro">Security telemetry, rule-based detections, case management, threat intelligence and evidence-first investigations.</p>
-      <div className="hero-meta"><span>DEPLOYMENT <b>SELF-HOSTED</b></span><span>LLM <b>OPTIONAL · LOCAL OLLAMA</b></span><span>DETECTION <b>RULE + HEURISTIC BASELINE</b></span></div>
+  const nav: {id:Page; label:string; sub:string}[] = [
+    {id:"overview",label:"Command center",sub:"Live operations"}, {id:"detections",label:"Detection & response",sub:"Events · alerts · cases"},
+    {id:"knowledge",label:"Intel & knowledge",sub:"Indicators · retrieval"}, {id:"platform",label:"Stack & evaluation",sub:"Health · quality · capacity"}
+  ];
+  return <main className="app-shell">
+    <aside className="sidebar"><div className="brand"><div className="brand-mark">A</div><div><strong>AEGIS</strong><span>AI SECURITY OPERATIONS</span></div></div>
+      <div className="workspace-label">WORKSPACE <span>LOCAL POC</span></div>
+      <nav>{nav.map(n=><button key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}><span className="nav-glyph">{({overview:"◈",detections:"⌁",knowledge:"◎",platform:"▦"} as Record<string,string>)[n.id]}</span><span><b>{n.label}</b><small>{n.sub}</small></span>{page===n.id&&<i/>}</button>)}</nav>
+      <div className="sidebar-bottom"><div className={`health-chip ${status==="Connected"?"ok":"bad"}`}><i/>{status==="Connected"?"API CONNECTED":"API UNAVAILABLE"}</div><small>Defensive use only · analyst reviewed</small><small>Build 0.2.0 · self-hosted</small></div>
+    </aside>
+    <section className="main-area"><header className="topbar"><div><span className="breadcrumb">AEGIS / </span><strong>{nav.find(n=>n.id===page)?.label}</strong></div><div className="top-actions"><span className="live-indicator"><i/> LIVE · 15S REFRESH</span><button className="button secondary" onClick={()=>{void refresh();if(page==="platform")void refreshPlatform();}}>↻ Refresh</button></div></header>
+      <section className="page-content">
+        {page==="overview" && <>
+          <div className="page-title"><div><p className="eyebrow">SECURITY POSTURE / OVERVIEW</p><h1>See the signal<span>.</span></h1><p className="lede">One workspace for security telemetry, detection triage and evidence-led investigation.</p></div><div className="posture-card"><span>PLATFORM STATUS</span><strong className={status==="Connected"?"text-green":"text-amber"}>{status.toUpperCase()}</strong><small>Core dependencies polled every 15 seconds</small></div></div>
+          <div className="metric-grid">{[["Events ingested",overview?.events,"↗","All normalized events"],["Open alerts",overview?.alerts_open,"⌁","Awaiting analyst triage"],["Critical alerts",overview?.alerts_critical,"!","Open critical severity"],["Open cases",overview?.cases_open,"◇","Active investigations"],["Threat indicators",overview?.indicators,"◎","Local IOC watchlist"],["Knowledge documents",overview?.documents,"▤","Stored reference docs"]].map(([label,value,glyph,foot])=><article className="metric-card" key={String(label)}><div className="metric-top"><span>{label}</span><b>{glyph}</b></div><strong>{fmt(value as number|undefined)}</strong><small>{foot}</small><div className="metric-track"><i style={{width:`${Math.min(100,Number(value||0)*8)}%`}}/></div></article>)}</div>
+          <div className="section-head"><div><p className="eyebrow">PRIORITY QUEUE</p><h2>Needs attention</h2></div><button className="button secondary" onClick={()=>setPage("detections")}>Open detection workspace →</button></div>
+          <div className="surface table-surface"><table><thead><tr><th>DETECTION</th><th>SEVERITY</th><th>SOURCE</th><th>STATUS</th><th>QUICK ACTION</th></tr></thead><tbody>{alerts.slice(0,5).map(a=><tr key={a.id}><td><b>{a.title}</b><small>{a.description||a.message||a.rule_id}</small></td><td><span className={`severity ${a.severity}`}>{a.severity}</span></td><td>{a.src_ip||"—"}</td><td><span className="state-dot">● {a.status}</span></td><td><button className="button tiny" disabled={busy} onClick={()=>void createCase(a)}>Create case</button></td></tr>)}{!alerts.length&&<tr><td colSpan={5} className="empty-state">No open alerts. Generate a safe synthetic event in Detection & response to validate the pipeline.</td></tr>}</tbody></table></div>
+          <div className="bottom-grid"><article className="surface pad"><p className="eyebrow">PIPELINE SNAPSHOT</p><h3>Ingest → Detect → Investigate</h3><div className="pipeline"><span><b>01</b> Ingest event</span><i>→</i><span><b>02</b> Match rules</span><i>→</i><span><b>03</b> Create case</span><i>→</i><span><b>04</b> Review evidence</span></div><p className="muted">Current baseline uses direct PostgreSQL persistence and deterministic detection rules. Streaming and vector/graph integrations are optional or not yet wired.</p></article><article className="surface pad"><p className="eyebrow">RECENT CASES</p><h3>Investigation activity</h3>{cases.slice(0,3).map(c=><div className="mini-row" key={c.id}><span className={`severity ${c.severity}`}>{c.severity}</span><b>{c.title}</b><small>{c.status}</small></div>)}{!cases.length&&<p className="muted">No cases recorded yet.</p>}</article></div>
+        </>}
+        {page==="detections" && <><div className="page-title"><div><p className="eyebrow">DETECTION ENGINEERING / RESPONSE</p><h1>Detection workspace<span>.</span></h1><p className="lede">Generate safe test telemetry, triage rule matches and track analyst investigations.</p></div></div>
+          <div className="two-col"><article className="surface pad"><p className="eyebrow">SAFE SIMULATION</p><h2>Generate a test event</h2><label>Event type<select value={eventType} onChange={e=>setEventType(e.target.value)}><option value="authentication_failure">Authentication failure</option><option value="suspicious_process">Suspicious process</option><option value="privilege_escalation">Privilege escalation</option><option value="normal_activity">Normal activity</option></select></label><label>Event message<input value={eventMessage} onChange={e=>setEventMessage(e.target.value)} maxLength={1000}/></label><button className="button primary" disabled={busy} onClick={()=>void simulateEvent()}>{busy?"Submitting…":"＋ Submit synthetic event"}</button><p className="hint">Uses reserved documentation IP 198.51.100.23. No external systems are contacted.</p></article>
+          <article className="surface pad"><p className="eyebrow">AI-ASSISTED TRIAGE</p><h2>Investigation assistant</h2><label>Question<textarea value={question} onChange={e=>setQuestion(e.target.value)} rows={3}/></label><button className="button primary" disabled={busy} onClick={()=>void runInvestigation()}>{busy?"Investigating…":"✳ Investigate with evidence"}</button><p className="hint">Local Ollama is optional. Results are advisory and do not execute response actions.</p>{investigation&&<pre className="result">{JSON.stringify(investigation,null,2)}</pre>}</article></div>
+          <div className="section-head"><div><p className="eyebrow">DETECTION QUEUE</p><h2>Open alerts <span className="count-badge">{alerts.length}</span></h2></div></div><div className="surface table-surface"><table><thead><tr><th>DETECTION</th><th>RULE</th><th>SEVERITY</th><th>SOURCE</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>{alerts.map(a=><tr key={a.id}><td><b>{a.title}</b><small>{a.description||a.message}</small></td><td><code>{a.rule_id||"—"}</code></td><td><span className={`severity ${a.severity}`}>{a.severity}</span></td><td>{a.src_ip||"—"}</td><td>{a.status}</td><td><button className="button tiny" disabled={busy} onClick={()=>void createCase(a)}>Create case</button></td></tr>)}{!alerts.length&&<tr><td colSpan={6} className="empty-state">No open alerts. Submit a synthetic event above.</td></tr>}</tbody></table></div>
+          <div className="section-head"><div><p className="eyebrow">CASE MANAGEMENT</p><h2>Recent investigations</h2></div><button className="button secondary" disabled={busy} onClick={()=>void createCase()}>＋ New case</button></div><div className="surface case-table">{cases.map(c=><div className="case-row" key={c.id}><div className="case-icon">◇</div><div className="case-main"><b>{c.title}</b><small>{c.id}</small></div><span className={`severity ${c.severity}`}>{c.severity}</span><span className="pill">{c.status}</span></div>)}{!cases.length&&<p className="empty-state">No cases yet. Create one from an alert or start a new case.</p>}</div>
+        </>}
+        {page==="knowledge" && <><div className="page-title"><div><p className="eyebrow">CONTEXT ENGINEERING / KNOWLEDGE</p><h1>Intel & knowledge<span>.</span></h1><p className="lede">Manage local indicators and reference material for evidence-led triage.</p></div></div>
+          <div className="two-col"><article className="surface pad"><p className="eyebrow">THREAT INTELLIGENCE</p><h2>Add an indicator</h2><form onSubmit={e=>{e.preventDefault();void addIndicator(e);}}><label>Indicator type<select value={indicatorType} onChange={e=>setIndicatorType(e.target.value)}><option value="ip">IP address</option><option value="domain">Domain</option><option value="hash">File hash</option><option value="url">URL</option></select></label><label>Indicator value<input required value={indicatorValue} onChange={e=>setIndicatorValue(e.target.value)} placeholder="e.g. 198.51.100.42"/></label><button className="button primary" disabled={busy||!indicatorValue.trim()}>＋ Save indicator</button></form><p className="hint">Use known test indicators only. No external threat-intel feed is connected.</p></article>
+          <article className="surface pad"><p className="eyebrow">LOCAL KNOWLEDGE BASE</p><h2>Add a reference document</h2><form onSubmit={e=>{e.preventDefault();void addDocument(e);}}><label>Title<input required value={docTitle} onChange={e=>setDocTitle(e.target.value)} maxLength={250}/></label><label>Content <textarea required minLength={20} value={docContent} onChange={e=>setDocContent(e.target.value)} rows={4} maxLength={100000} placeholder="Paste defensive runbook or incident-handling notes…"/></label><button className="button primary" disabled={busy||docContent.trim().length<20}>＋ Save document</button></form><p className="hint">Stored in PostgreSQL. Retrieval currently uses keyword matching; vector embeddings are not yet integrated.</p></article></div>
+          <div className="section-head"><div><p className="eyebrow">INDICATOR INVENTORY</p><h2>Stored indicators <span className="count-badge">{indicators.length}</span></h2></div></div><div className="surface table-surface"><table><thead><tr><th>TYPE</th><th>VALUE</th><th>CONFIDENCE</th><th>SOURCE</th><th>DESCRIPTION</th></tr></thead><tbody>{indicators.map(i=><tr key={i.id}><td>{i.indicator_type}</td><td><code>{i.value}</code></td><td><div className="confidence"><i style={{width:`${i.confidence}%`}}/>{i.confidence}%</div></td><td>{i.source}</td><td>{i.description||"—"}</td></tr>)}{!indicators.length&&<tr><td colSpan={5} className="empty-state">No indicators stored.</td></tr>}</tbody></table></div>
+          <div className="section-head"><div><p className="eyebrow">RETRIEVAL</p><h2>Search knowledge documents</h2></div></div><form className="search-bar" onSubmit={e=>void searchKnowledge(e)}><input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} minLength={2} placeholder="Search runbooks, indicators, procedures…"/><button className="button primary" disabled={busy}>Search</button></form><div className="doc-results">{searchResults.map(d=><article className="surface pad" key={d.id}><div className="doc-head"><h3>{d.title}</h3><span className="pill">score {d.score}</span></div><p>{d.content}</p><small>{d.source}</small></article>)}{!searchResults.length&&<p className="muted">Run a search to see matching documents. Retrieval is a keyword baseline, not vector RAG yet.</p>}</div>
+        </>}
+        {page==="platform" && <><div className="page-title"><div><p className="eyebrow">PLATFORM ENGINEERING / OBSERVABILITY</p><h1>Stack & evaluation<span>.</span></h1><p className="lede">Operational checks, runtime counters and an honest readiness view of AI/data integrations.</p></div><button className="button secondary" onClick={()=>void refreshPlatform()}>↻ Refresh diagnostics</button></div>
+          <div className="platform-banner"><div><span>CORE PLATFORM</span><strong className={platform?.api==="ready"?"text-green":"text-amber"}>{platform?.api?.toUpperCase()||"CHECKING"}</strong><small>API v{platform?.version||"—"} · PostgreSQL and Redis readiness</small></div><div><span>DATA PERSISTENCE</span><strong>{platform?.readiness.postgres==="ok"?"HEALTHY":"CHECK"}</strong><small>PostgreSQL-backed operational records</small></div><div><span>OBSERVABILITY</span><strong>BASELINE</strong><small>Prometheus-format counters at /metrics</small></div></div>
+          <div className="section-head"><div><p className="eyebrow">DEPENDENCY HEALTH</p><h2>Stack inventory</h2></div><span className="hint-inline">Statuses are based on health probes/configuration, not assumed from the roadmap.</span></div><div className="integration-grid">{(platform?.integrations||[]).map(x=><article className="surface integration-card" key={x.name}><div className="integration-head"><b>{x.name}</b><span className={`integration-state ${x.state}`}>{x.state}</span></div><p>{x.detail}</p></article>)}</div>
+          <div className="section-head"><div><p className="eyebrow">RUNTIME TELEMETRY</p><h2>Measured counters</h2></div></div><div className="metric-grid compact">{Object.entries(platform?.metrics||{}).map(([k,v])=><article className="metric-card" key={k}><span className="metric-top">{k}</span><strong>{fmt(v)}</strong><small>Prometheus endpoint sample</small></article>)}{!platform?.metrics||!Object.keys(platform.metrics).length?<p className="muted">No counters returned yet. Refresh diagnostics when the API is healthy.</p>:null}</div>
+          <div className="section-head"><div><p className="eyebrow">MODEL / AGENT / RAG EVALUATION</p><h2>Evaluation readiness</h2></div></div><div className="surface eval-table"><div className="eval-row eval-header"><span>COMPONENT</span><span>WHAT TO MEASURE</span><span>STATUS</span></div>
+            {[{name:"Rule detection",measure:"Precision, recall, false-positive rate on labeled events",state:"RULE BASELINE ONLY",cls:"partial"},{name:"ML models",measure:"F1, ROC-AUC, PR-AUC, drift and calibration on held-out labels",state:"NO MODEL REGISTERED",cls:"planned"},{name:"Agent workflow",measure:"Task success, tool-call validity, retries, latency and cost",state:"NO AGENT RUNTIME",cls:"planned"},{name:"RAG / retrieval",measure:"Recall@k, MRR / nDCG, groundedness and citation coverage",state:"KEYWORD BASELINE",cls:"partial"},{name:"Graph analytics",measure:"Entity resolution quality, path relevance and query latency",state:"NOT WIRED",cls:"planned"},{name:"Streaming pipeline",measure:"Throughput, consumer lag, event loss and end-to-end latency",state:"NOT WIRED",cls:"planned"},{name:"Local LLM",measure:"Latency, tokens/sec, task rubric and grounded response rate",state:"OPTIONAL / UNVERIFIED",cls:"partial"}].map(r=><div className="eval-row" key={r.name}><b>{r.name}</b><span>{r.measure}</span><span className={`eval-state ${r.cls}`}>{r.state}</span></div>)}</div>
+          <div className="notice-panel"><b>Why quality scores are blank</b><p>Scores such as model accuracy, agent success rate, RAG recall and graph quality must be calculated from repeatable test cases and labeled expected outputs. This baseline does not yet have those evaluation datasets or integrated runtimes, so it intentionally does not invent scores. The next implementation stage should add versioned evaluation datasets, repeatable benchmark runs, persisted results and model/agent traces.</p></div>
+        </>}
+        {(message||error)&&<div className={`toast ${error?"error":"success"}`} role="status"><b>{error?"Request failed":"Done"}</b><span>{error||message}</span><button className="toast-close" onClick={()=>{setMessage("");setError("");}}>×</button></div>}
+      </section><footer className="app-footer"><span>AEGIS AI SOC <b>·</b> SELF-HOSTED DEFENSIVE POC</span><span>Human-reviewed investigations · no automated response actions</span></footer>
     </section>
-    <section className="section-heading"><div><p className="eyebrow">LIVE TELEMETRY</p><h2>Operational overview</h2></div><span className="pill">{status.toUpperCase()}</span></section>
-    <section className="cards">
-      {[["Events ingested",overview?.events],["Open alerts",overview?.alerts_open],["Critical alerts",overview?.alerts_critical],["Open cases",overview?.cases_open],["Threat indicators",overview?.indicators],["Knowledge documents",overview?.documents]].map(([label,value]) =>
-        <article className="card" key={String(label)}><span className="card-label">{label}</span><h3>{value ?? "—"}</h3><p>Persisted in the SOC database</p></article>)}
-    </section>
-    <section className="work-grid">
-      <article className="panel"><p className="eyebrow">SAFE SIMULATION</p><h2>Generate a test event</h2>
-        <label>Event type<select value={eventType} onChange={e=>setEventType(e.target.value)}><option value="authentication_failure">Authentication failure</option><option value="suspicious_process">Suspicious process</option><option value="privilege_escalation">Privilege escalation</option><option value="normal_activity">Normal activity</option></select></label>
-        <label>Event message<input value={eventMessage} onChange={e=>setEventMessage(e.target.value)} maxLength={1000}/></label>
-        <button disabled={busy} onClick={() => void simulateEvent()}>{busy ? "Working…" : "Submit synthetic event"}</button>
-        <p className="hint">Uses reserved documentation IP 198.51.100.23. No external systems are contacted.</p>
-      </article>
-      <article className="panel"><p className="eyebrow">AI-ASSISTED TRIAGE</p><h2>Investigation assistant</h2>
-        <label>Question<textarea value={question} onChange={e=>setQuestion(e.target.value)} rows={3}/></label>
-        <button disabled={busy} onClick={() => void runInvestigation()}>{busy ? "Working…" : "Investigate with available evidence"}</button>
-        {investigation && <pre className="result">{investigation}</pre>}
-        <p className="hint">Uses stored evidence and local Ollama if available. Outputs are advisory; no response actions are executed.</p>
-      </article>
-    </section>
-    <section className="section-heading"><div><p className="eyebrow">DETECTION QUEUE</p><h2>Open alerts</h2></div><span className="pill">{alerts.length} SHOWN</span></section>
-    <section className="table-wrap"><table><thead><tr><th>Detection</th><th>Severity</th><th>Source</th><th>Status</th><th>Action</th></tr></thead><tbody>
-      {alerts.map(alert=><tr key={alert.id}><td><strong>{alert.title}</strong><small>{alert.message}</small></td><td><span className={`severity ${alert.severity}`}>{alert.severity}</span></td><td>{alert.src_ip || "—"}</td><td>{alert.status}</td><td><button className="small" disabled={busy} onClick={() => void createCase(alert)}>Create case</button></td></tr>)}
-      {!alerts.length && <tr><td colSpan={5} className="empty">No open alerts. Submit a synthetic event to exercise detection.</td></tr>}
-    </tbody></table></section>
-    <section className="section-heading"><div><p className="eyebrow">CASE MANAGEMENT</p><h2>Recent investigations</h2></div><button className="ghost" disabled={busy} onClick={() => void createCase()}>New case</button></section>
-    <section className="case-list">{cases.map(item=><article className="case-row" key={item.id}><div><strong>{item.title}</strong><p>{item.id}</p></div><span className={`severity ${item.severity}`}>{item.severity}</span><span className="pill">{item.status}</span></article>)}{!cases.length && <p className="empty">No cases yet. Create one from an alert or start a new case.</p>}</section>
-    {message && <div className="notice">{message}</div>}
-    <footer>AEGIS AI SOC <span>Open-source stack · Defensive use · Human-reviewed investigations</span></footer>
   </main>;
 }
-
 createRoot(document.getElementById("root")!).render(<React.StrictMode><App /></React.StrictMode>);

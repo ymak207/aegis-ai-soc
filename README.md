@@ -2,6 +2,20 @@
 
 Self-hosted defensive Security Operations Center proof of concept. The core stack is FastAPI, React/TypeScript, PostgreSQL and Redis. Optional profiles add ClickHouse analytics, Qdrant vector search, Ollama local inference, MinIO object storage, and Prometheus/Grafana.
 
+## Application lifecycle scripts
+
+From the repository root on Linux:
+
+```bash
+./scripts/start.sh       # validate Compose, build and start core services, wait for readiness
+./scripts/status.sh      # show container status
+./scripts/status.sh --wait # show status and verify API/frontend readiness
+./scripts/stop.sh        # stop services; preserve data volumes
+./scripts/reset.sh       # interactive destructive reset; requires typing RESET-AEGIS
+```
+
+`./scripts/reset.sh` deletes Compose-managed volumes (PostgreSQL, Redis and any optional profile data). It preserves source code and `.env`. Do not use it unless you intend to erase persisted application data. `./scripts/reset.sh --yes` skips the confirmation and should be used only deliberately.
+
 ## Core startup
 
 ```bash
@@ -43,6 +57,12 @@ Model weights can consume several gigabytes. Do not enable every profile at once
 - `POST /api/v1/investigations`: evidence-first investigation; uses Ollama if available, otherwise returns a deterministic fallback.
 - `GET /api/v1/mcp/tools`: internal tool catalog, not a full MCP protocol server.
 - `GET /metrics`: Prometheus-format counters.
+
+## UI workspaces
+
+The web console includes Command center, Detection & response, Intel & knowledge, and Stack & evaluation workspaces. The Stack & evaluation page shows live core dependency checks and actual Prometheus-format counters. ML model quality, agent task success, RAG recall and graph quality are explicitly marked unmeasured until repeatable labeled benchmarks and integrated runtimes are added; the UI does not invent quality scores.
+
+The frontend's Vite proxy forwards `/api`, `/health` and `/metrics` to the API container. Ports remain bound to loopback by default.
 
 ## Important limitations
 
