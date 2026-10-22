@@ -469,8 +469,8 @@ DETECTION_EVAL_DATASET = [
     {"type":"normal_activity","message":"scheduled backup completed","expected":False},
     {"type":"normal_activity","message":"user opened dashboard","expected":False},
     {"type":"normal_activity","message":"routine health check","expected":False},
-    {"type":"normal_activity","message":"powershell -enc synthetic-test","expected":True},
-    {"type":"normal_activity","message":"credential dump detected in simulation","expected":True},
+    {"type":"process_start","message":"powershell -enc synthetic-test","expected":True},
+    {"type":"process_start","message":"credential dump detected in simulation","expected":True},
 ]
 
 @app.post("/api/v1/evaluations/run")
