@@ -243,7 +243,7 @@ def system_info():
             "utc_time": datetime.now(timezone.utc).isoformat(),
             "capabilities": ["event-ingestion", "rule-based-detection", "alert-management", "case-management",
                              "threat-intelligence", "audit-trail", "knowledge-retrieval", "local-llm-investigation",
-                             "mcp-tool-endpoint", "metrics", "baseline-evaluation", "agent-run-traces", "data-quality", "graph-lite"]}
+                             "mcp-json-rpc-tools", "integration-health-probes", "metrics", "baseline-evaluation", "agent-run-traces", "data-quality", "graph-lite"]}
 
 @app.get("/api/v1/overview")
 def overview():
@@ -570,6 +570,120 @@ def mcp_tools():
         {"name":"get_data_quality","description":"Get event-field completeness metrics","inputSchema":{"type":"object","properties":{}}},
         {"name":"run_detection_evaluation","description":"Run the versioned synthetic detection benchmark","inputSchema":{"type":"object","properties":{}}}
     ],"note":"This is an HTTP tool catalog, not a full MCP transport server."}
+
+@app.get("/api/v1/integrations")
+def integration_status():
+    """Probe optional services at runtime; configured containers are not assumed healthy."""
+    import urllib.request
+    import socket
+
+    def http_probe(name: str, url: str, timeout: float = 1.5) -> dict:
+        try:
+            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                body = response.read(4096)
+            return {"name": name, "state": "online", "detail": f"HTTP {response.status}", "http_status": response.status}
+        except urllib.error.HTTPError as exc:
+            # An authentication response still proves the HTTP service is reachable.
+            if exc.code in (401, 403):
+                return {"name": name, "state": "reachable", "detail": f"HTTP {exc.code} (authentication required)", "http_status": exc.code}
+            return {"name": name, "state": "offline", "detail": f"HTTP {exc.code}", "http_status": exc.code}
+        except Exception as exc:
+            return {"name": name, "state": "offline", "detail": type(exc).__name__}
+
+    def tcp_probe(name: str, host: str, port: int, configured: bool = True) -> dict:
+        if not configured:
+            return {"name": name, "state": "not_configured", "detail": "Optional integration is not enabled"}
+        try:
+            with socket.create_connection((host, port), timeout=1.0):
+                return {"name": name, "state": "reachable", "detail": f"TCP {port} reachable"}
+        except Exception as exc:
+            return {"name": name, "state": "offline", "detail": type(exc).__name__}
+
+    results = [
+        http_probe("Ollama", OLLAMA_URL.rstrip("/") + "/api/tags"),
+        http_probe("Qdrant", os.getenv("QDRANT_URL", "http://qdrant:6333").rstrip("/") + "/readyz"),
+        tcp_probe("Kafka", os.getenv("KAFKA_HOST", "kafka"), int(os.getenv("KAFKA_PORT", "9092")), os.getenv("KAFKA_ENABLED", "false").lower() == "true"),
+        http_probe("Neo4j HTTP", os.getenv("NEO4J_HTTP_URL", "http://neo4j:7474")),
+    ]
+    return {"items": results, "checked_at": datetime.now(timezone.utc).isoformat(),
+            "note": "Runtime connectivity only; reachable does not imply the integration is wired into every workflow."}
+
+
+MCP_TOOLS = {
+    "get_overview": {"description": "Return persisted SOC counters", "inputSchema": {"type": "object", "properties": {}}},
+    "search_alerts": {"description": "Search alerts by status and limit", "inputSchema": {"type": "object", "properties": {"status": {"type": ["string", "null"]}, "limit": {"type": "integer", "minimum": 1, "maximum": 100}}, "additionalProperties": False}},
+    "search_knowledge": {"description": "Search stored SOC knowledge documents", "inputSchema": {"type": "object", "properties": {"q": {"type": "string", "minLength": 2}, "limit": {"type": "integer", "minimum": 1, "maximum": 20}}, "required": ["q"], "additionalProperties": False}},
+    "get_graph_summary": {"description": "Return PostgreSQL-derived graph-lite associations", "inputSchema": {"type": "object", "properties": {}}},
+    "get_data_quality": {"description": "Return measured event completeness", "inputSchema": {"type": "object", "properties": {}}},
+}
+
+
+def _mcp_call_tool(name: str, arguments: dict) -> Any:
+    """Small read-only MCP-compatible tool dispatcher; no arbitrary code or response actions."""
+    if name == "get_overview":
+        return overview()
+    if name == "search_alerts":
+        status = arguments.get("status", "open")
+        limit = int(arguments.get("limit", 25))
+        if status not in (None, "open", "investigating", "resolved", "false_positive") or not 1 <= limit <= 100:
+            raise ValueError("Invalid status or limit")
+        return list_alerts(status=status, limit=limit)
+    if name == "search_knowledge":
+        q = arguments.get("q", "")
+        limit = int(arguments.get("limit", 5))
+        if not isinstance(q, str) or len(q) < 2 or len(q) > 500 or not 1 <= limit <= 20:
+            raise ValueError("q must be 2-500 characters and limit 1-20")
+        return search_knowledge(q=q, limit=limit)
+    if name == "get_graph_summary":
+        return graph_summary()
+    if name == "get_data_quality":
+        return data_quality()
+    raise KeyError(name)
+
+
+@app.post("/mcp")
+def mcp_json_rpc(payload: dict):
+    """MCP JSON-RPC endpoint for initialization, tool discovery and bounded read-only calls."""
+    request_id = payload.get("id")
+    method = payload.get("method")
+    params = payload.get("params") or {}
+    def error(code: int, message: str):
+        return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
+    if payload.get("jsonrpc") != "2.0" or not isinstance(method, str):
+        return error(-32600, "Invalid JSON-RPC request")
+    if method == "initialize":
+        return {"jsonrpc": "2.0", "id": request_id, "result": {
+            "protocolVersion": params.get("protocolVersion", "2024-11-05"),
+            "capabilities": {"tools": {"listChanged": False}},
+            "serverInfo": {"name": "aegis-ai-soc", "version": app.version}}}
+    if method == "notifications/initialized":
+        return {"jsonrpc": "2.0", "id": request_id, "result": {}}
+    if method == "tools/list":
+        return {"jsonrpc": "2.0", "id": request_id, "result": {"tools": [
+            {"name": name, **definition} for name, definition in MCP_TOOLS.items()]}}
+    if method == "tools/call":
+        name = params.get("name")
+        arguments = params.get("arguments") or {}
+        if name not in MCP_TOOLS or not isinstance(arguments, dict):
+            return error(-32602, "Unknown tool or invalid arguments")
+        try:
+            result = _mcp_call_tool(name, arguments)
+            with connect() as conn:
+                audit(conn, "mcp.tool_called", "tool", name, {"argument_keys": sorted(arguments.keys())})
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"content": [
+                {"type": "text", "text": json.dumps(result, default=str)}], "isError": False}}
+        except KeyError:
+            return error(-32602, "Unknown tool")
+        except (ValueError, TypeError) as exc:
+            return error(-32602, str(exc))
+        except Exception:
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"content": [
+                {"type": "text", "text": "Tool execution failed; inspect server logs."}], "isError": True}}
+    if method.startswith("notifications/"):
+        return {"jsonrpc": "2.0", "id": request_id, "result": {}}
+    return error(-32601, "Method not found")
+
 
 @app.get("/api/v1/audit")
 def audit_entries(limit: int = Query(default=100, ge=1, le=500)):

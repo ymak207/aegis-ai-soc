@@ -58,14 +58,15 @@ function App() {
   }, []);
   const refreshPlatform = React.useCallback(async () => {
     try {
-      const [health, info, metricText, tools, toolsQuality, graph, agentHistory, evalHistory] = await Promise.all([
+      const [health, info, metricText, tools, toolsQuality, graph, agentHistory, evalHistory, liveIntegrations] = await Promise.all([
         request<{status: string; checks: Record<string, string>}>('/health/ready'), request<{version: string; capabilities: string[]}>(API),
         fetch('/metrics').then(r => r.ok ? r.text() : Promise.reject(new Error('metrics endpoint unavailable'))),
         request<{tools: unknown[]}>(`${API}/mcp/tools`),
         request<Record<string, unknown>>(`${API}/data/quality`),
         request<Record<string, unknown>>(`${API}/graph/summary`),
         request<{items: Array<Record<string, unknown>>}>(`${API}/agents/runs?limit=5`),
-        request<{items: Array<{id: string; suite: string; metrics: Record<string, unknown>; created_at: string}>}>(`${API}/evaluations/results?limit=1`)
+        request<{items: Array<{id: string; suite: string; metrics: Record<string, unknown>; created_at: string}>}>(`${API}/evaluations/results?limit=1`),
+        request<{items: Array<{name:string;state:string;detail:string}>}>(`${API}/integrations`)
       ]);
       const parsed: Record<string, number | null> = {};
       for (const line of metricText.split('\n')) { const m = line.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*)\s+([0-9.eE+-]+)$/); if (m) parsed[m[1]] = Number(m[2]); }
@@ -77,12 +78,9 @@ function App() {
         integrations: [
           {name:"PostgreSQL",state:health.checks.postgres === "ok" ? "online" : "offline",detail:"Persistent event, alert, case and audit records"},
           {name:"Redis",state:health.checks.redis === "ok" ? "online" : "offline",detail:"Cache / queue dependency health probe"},
-          {name:"Local LLM · Ollama",state:"optional",detail:"Configured as optional; verify model availability before inference"},
-          {name:"Vector retrieval · Qdrant",state:"profile",detail:"Optional profile; vector ingestion is not wired into baseline retrieval"},
-          {name:"Graph · Neo4j",state:"profile",detail:"Optional profile; graph model / graph analytics are not wired yet"},
-          {name:"Streaming · Kafka",state:"profile",detail:"Optional profile; core event ingestion currently writes directly to PostgreSQL"},
-          {name:"MCP tools",state:tools.tools.length ? "catalog" : "offline",detail:`HTTP tool catalog contains ${tools.tools.length} tools; this is not a full MCP transport`},
-          {name:"MLflow / model registry",state:"planned",detail:"Not installed or connected in this baseline"},
+          ...liveIntegrations.items.map(x=>({name:x.name,state:x.state,detail:x.detail})),
+          {name:"MCP JSON-RPC",state:"online",detail:`Read-only MCP-compatible initialize/tools/list/tools/call endpoint; ${tools.tools.length} legacy catalog entries`},
+          {name:"ML model registry",state:"not_configured",detail:"No trained model or registry is configured; synthetic rule benchmark remains separate."},
         ] });
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load platform status"); }
   }, []);
@@ -165,7 +163,7 @@ function App() {
           <div className="surface eval-table"><div className="eval-row eval-header"><span>AGENT</span><span>TASK / TRACE</span><span>DURATION</span></div>{agentRuns.map((run,i)=><div className="eval-row" key={String(run.id||i)}><b>{String(run.agent_name||"—")}</b><span>{String(run.task||"—")} · {String(run.status||"—")}</span><span>{String(run.duration_ms??"—")} ms</span></div>)}{!agentRuns.length&&<p className="empty-state">Run an investigation from Detection & response to populate agent traces.</p>}</div>
           <div className="section-head"><div><p className="eyebrow">GRAPH-LITE</p><h2>Event relationship summary</h2></div></div>
           <div className="surface pad"><p>Mode: <b>{String(graphSummary?.mode||"checking")}</b> · Nodes: <b>{fmt(graphSummary?.node_count as number|undefined)}</b> · Edges: <b>{fmt(graphSummary?.edge_count as number|undefined)}</b></p><p className="muted">{String(graphSummary?.note||"Graph associations are derived from stored events; no causal inference is claimed.")}</p></div>
-          <div className="notice-panel"><b>What is and is not implemented</b><p>The benchmark is a deterministic rule baseline on synthetic labels, agent traces record investigation steps and duration, retrieval remains keyword-based, and graph-lite derives associations from PostgreSQL. A trained ML model, vector embeddings, full MCP/A2A/ACP protocol servers, and Kafka-backed ingestion are not represented as implemented merely because optional containers exist.</p></div>
+          <div className="notice-panel"><b>What is and is not implemented</b><p>The benchmark is a deterministic rule baseline on synthetic labels, agent traces record investigation steps and duration, retrieval remains keyword-based, and graph-lite derives associations from PostgreSQL. MCP JSON-RPC exposes bounded read-only tools. Runtime probes show service reachability only; they do not prove that Qdrant vector RAG, Kafka ingestion, Neo4j graph analytics, A2A/ACP, or a trained ML model is integrated into the event workflow.</p></div>
         </>}
         {(message||error)&&<div className={`toast ${error?"error":"success"}`} role="status"><b>{error?"Request failed":"Done"}</b><span>{error||message}</span><button className="toast-close" onClick={()=>{setMessage("");setError("");}}>×</button></div>}
       </section><footer className="app-footer"><span>AEGIS AI SOC <b>·</b> SELF-HOSTED DEFENSIVE POC</span><span>Human-reviewed investigations · no automated response actions</span></footer>
