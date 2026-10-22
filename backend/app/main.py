@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -71,6 +72,17 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
  id TEXT PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'manual',
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS evaluation_runs (
+ id TEXT PRIMARY KEY, suite TEXT NOT NULL, metrics JSONB NOT NULL,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS agent_runs (
+ id TEXT PRIMARY KEY, agent_name TEXT NOT NULL, task TEXT NOT NULL,
+ status TEXT NOT NULL, duration_ms INTEGER NOT NULL DEFAULT 0,
+ trace JSONB NOT NULL DEFAULT '[]'::jsonb, result JSONB NOT NULL DEFAULT '{}'::jsonb,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_agent_runs_created ON agent_runs(created_at DESC);
 CREATE TABLE IF NOT EXISTS audit_log (
  id BIGSERIAL PRIMARY KEY, action TEXT NOT NULL, entity_type TEXT NOT NULL,
  entity_id TEXT NOT NULL, details JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -231,7 +243,7 @@ def system_info():
             "utc_time": datetime.now(timezone.utc).isoformat(),
             "capabilities": ["event-ingestion", "rule-based-detection", "alert-management", "case-management",
                              "threat-intelligence", "audit-trail", "knowledge-retrieval", "local-llm-investigation",
-                             "mcp-tool-endpoint", "metrics"]}
+                             "mcp-tool-endpoint", "metrics", "baseline-evaluation", "agent-run-traces", "data-quality", "graph-lite"]}
 
 @app.get("/api/v1/overview")
 def overview():
@@ -390,6 +402,7 @@ def search_knowledge(q: str = Query(min_length=2, max_length=500), limit: int = 
 
 @app.post("/api/v1/investigations")
 def investigate(body: InvestigateIn):
+    started = time.perf_counter()
     with connect() as conn:
         alert=None
         if body.alert_id:
@@ -421,16 +434,141 @@ def investigate(body: InvestigateIn):
     except Exception as exc:
         answer["llm_status"]="unavailable; returned deterministic evidence baseline"
         answer["llm_error_type"]=type(exc).__name__
+    duration_ms = int((time.perf_counter() - started) * 1000)
+    trace = [
+        {"step": "load_alert_context", "status": "ok" if alert else ("skipped" if not body.alert_id else "missing")},
+        {"step": "retrieve_knowledge", "status": "ok", "evidence_count": len(evidence[:5]), "retriever": "keyword-baseline"},
+        {"step": "local_llm", "status": "ok" if answer["mode"] == "local-ollama" else "fallback",
+         "model": OLLAMA_MODEL if answer["mode"] == "local-ollama" else None},
+        {"step": "recommendations", "status": "ok", "response_actions_executed": False},
+    ]
+    run_id = str(uuid.uuid4())
+    answer["run_id"] = run_id
+    answer["duration_ms"] = duration_ms
+    answer["trace"] = trace
     with connect() as conn:
-        audit(conn,"investigation.run","alert" if body.alert_id else "query",body.alert_id or str(uuid.uuid4()),{"mode":answer["mode"]})
+        conn.execute("""INSERT INTO agent_runs(id,agent_name,task,status,duration_ms,trace,result)
+            VALUES(%s,%s,%s,%s,%s,%s,%s)""",
+            (run_id, "investigation-assistant", body.question, "completed", duration_ms,
+             Jsonb(trace), Jsonb({"mode": answer["mode"], "evidence_count": len(evidence[:5])})))
+        audit(conn,"investigation.run","alert" if body.alert_id else "query",body.alert_id or run_id,
+              {"mode":answer["mode"], "duration_ms": duration_ms, "evidence_count": len(evidence[:5])})
     return answer
+
+
+# Versioned, deterministic baseline benchmark. These are synthetic test cases, not a
+# substitute for a representative, labeled production dataset.
+DETECTION_EVAL_DATASET = [
+    {"type":"authentication_failure","message":"failed login","expected":True},
+    {"type":"failed_login","message":"invalid password","expected":True},
+    {"type":"suspicious_process","message":"unknown process launched","expected":True},
+    {"type":"malware_detected","message":"test malware signature","expected":True},
+    {"type":"privilege_escalation","message":"privilege changed","expected":True},
+    {"type":"threat_indicator_match","message":"reserved test IOC match","expected":True},
+    {"type":"normal_activity","message":"successful routine login","expected":False},
+    {"type":"normal_activity","message":"scheduled backup completed","expected":False},
+    {"type":"normal_activity","message":"user opened dashboard","expected":False},
+    {"type":"normal_activity","message":"routine health check","expected":False},
+    {"type":"normal_activity","message":"powershell -enc synthetic-test","expected":True},
+    {"type":"normal_activity","message":"credential dump detected in simulation","expected":True},
+]
+
+@app.post("/api/v1/evaluations/run")
+def run_evaluation():
+    """Run a repeatable rule-baseline benchmark and persist its exact dataset version."""
+    tp = fp = tn = fn = 0
+    examples = []
+    for index, sample in enumerate(DETECTION_EVAL_DATASET):
+        event = {"event_type": sample["type"], "message": sample["message"]}
+        predicted = bool(rule_matches(event))
+        expected = sample["expected"]
+        if predicted and expected: tp += 1
+        elif predicted and not expected: fp += 1
+        elif not predicted and not expected: tn += 1
+        else: fn += 1
+        examples.append({"case": index + 1, "expected_detection": expected, "predicted_detection": predicted,
+                         "pass": predicted == expected, "event_type": sample["type"]})
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    result = {"dataset_version": "aegis-synthetic-detection-v1", "sample_count": len(examples),
+              "confusion_matrix": {"tp": tp, "fp": fp, "tn": tn, "fn": fn},
+              "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4),
+              "accuracy": round((tp + tn) / len(examples), 4),
+              "pass_count": sum(1 for item in examples if item["pass"]),
+              "examples": examples,
+              "limitations": ["Synthetic, hand-authored cases only", "Rule/heuristic baseline, not a trained ML model",
+                              "Do not interpret these scores as production detection quality"]}
+    run_id = str(uuid.uuid4())
+    with connect() as conn:
+        conn.execute("INSERT INTO evaluation_runs(id,suite,metrics) VALUES(%s,%s,%s)",
+                     (run_id, "detection-baseline", Jsonb(result)))
+        audit(conn, "evaluation.completed", "evaluation", run_id,
+              {"suite": "detection-baseline", "sample_count": len(examples), "f1": result["f1"]})
+    return {"id": run_id, "suite": "detection-baseline", **result}
+
+@app.get("/api/v1/evaluations/results")
+def evaluation_results(limit: int = Query(default=10, ge=1, le=100)):
+    with connect() as conn:
+        rows = conn.execute("SELECT id,suite,metrics,created_at FROM evaluation_runs ORDER BY created_at DESC LIMIT %s",
+                            (limit,)).fetchall()
+    return {"items": [{"id": r[0], "suite": r[1], "metrics": r[2], "created_at": r[3]} for r in rows]}
+
+@app.get("/api/v1/agents/runs")
+def agent_runs(limit: int = Query(default=20, ge=1, le=100)):
+    with connect() as conn:
+        rows = conn.execute("""SELECT id,agent_name,task,status,duration_ms,trace,result,created_at
+            FROM agent_runs ORDER BY created_at DESC LIMIT %s""", (limit,)).fetchall()
+    keys = ["id","agent_name","task","status","duration_ms","trace","result","created_at"]
+    return {"items": [dict(zip(keys, row)) for row in rows]}
+
+@app.get("/api/v1/data/quality")
+def data_quality():
+    with connect() as conn:
+        row = conn.execute("""SELECT count(*),
+            count(*) FILTER (WHERE src_ip IS NULL OR src_ip=''),
+            count(*) FILTER (WHERE host IS NULL OR host=''),
+            count(*) FILTER (WHERE username IS NULL OR username='')
+            FROM security_events""").fetchone()
+        events, missing_ip, missing_host, missing_user = row
+        alert_count = conn.execute("SELECT count(*) FROM alerts").fetchone()[0]
+    return {"event_count": events, "alert_count": alert_count,
+            "completeness": {"src_ip_pct": round(100 * (events-missing_ip)/events, 2) if events else None,
+                             "host_pct": round(100 * (events-missing_host)/events, 2) if events else None,
+                             "username_pct": round(100 * (events-missing_user)/events, 2) if events else None},
+            "note": "Completeness is measured from stored events; null means no events exist."}
+
+@app.get("/api/v1/graph/summary")
+def graph_summary(limit: int = Query(default=500, ge=1, le=2000)):
+    """A relational graph-lite view derived from event records; Neo4j is not required."""
+    with connect() as conn:
+        rows = conn.execute("""SELECT event_type, COALESCE(host,'unknown') AS host,
+            COALESCE(username,'unknown') AS username, count(*) AS weight
+            FROM (SELECT event_type,host,username FROM security_events ORDER BY event_time DESC LIMIT %s) e
+            GROUP BY event_type,host,username ORDER BY weight DESC LIMIT 100""", (limit,)).fetchall()
+    nodes = set()
+    edges = []
+    for event_type, host, username, weight in rows:
+        for kind, value in (("event_type", event_type), ("host", host), ("user", username)):
+            nodes.add((kind, value))
+        edges.extend([
+            {"source": f"event_type:{event_type}", "target": f"host:{host}", "relation": "observed_on", "weight": weight},
+            {"source": f"event_type:{event_type}", "target": f"user:{username}", "relation": "associated_with", "weight": weight},
+        ])
+    return {"mode": "postgres-derived-graph-lite", "node_count": len(nodes),
+            "edge_count": len(edges), "nodes": [{"id": f"{kind}:{value}", "type": kind, "label": value}
+                                                  for kind, value in sorted(nodes)],
+            "edges": edges, "note": "Derived event associations only; this endpoint does not query Neo4j or infer causality."}
 
 @app.get("/api/v1/mcp/tools")
 def mcp_tools():
     return {"protocol":"AEGIS internal tool catalog v1","tools":[
         {"name":"search_alerts","description":"Search recent alerts","inputSchema":{"type":"object","properties":{"status":{"type":"string"},"limit":{"type":"integer"}}}},
         {"name":"search_knowledge","description":"Search stored SOC documents","inputSchema":{"type":"object","properties":{"q":{"type":"string"}}}},
-        {"name":"get_overview","description":"Get SOC counters","inputSchema":{"type":"object","properties":{}}}
+        {"name":"get_overview","description":"Get SOC counters","inputSchema":{"type":"object","properties":{}}},
+        {"name":"get_graph_summary","description":"Get derived event relationship summary","inputSchema":{"type":"object","properties":{}}},
+        {"name":"get_data_quality","description":"Get event-field completeness metrics","inputSchema":{"type":"object","properties":{}}},
+        {"name":"run_detection_evaluation","description":"Run the versioned synthetic detection benchmark","inputSchema":{"type":"object","properties":{}}}
     ],"note":"This is an HTTP tool catalog, not a full MCP transport server."}
 
 @app.get("/api/v1/audit")

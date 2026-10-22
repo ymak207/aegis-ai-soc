@@ -39,6 +39,10 @@ function App() {
   const [searchQuery, setSearchQuery] = React.useState("authentication");
   const [searchResults, setSearchResults] = React.useState<DocumentItem[]>([]);
   const [platform, setPlatform] = React.useState<PlatformStatus | null>(null);
+  const [evaluationResult, setEvaluationResult] = React.useState<Record<string, unknown> | null>(null);
+  const [dataQuality, setDataQuality] = React.useState<Record<string, unknown> | null>(null);
+  const [graphSummary, setGraphSummary] = React.useState<Record<string, unknown> | null>(null);
+  const [agentRuns, setAgentRuns] = React.useState<Array<Record<string, unknown>>>([]);
 
   const refresh = React.useCallback(async () => {
     try {
@@ -54,13 +58,21 @@ function App() {
   }, []);
   const refreshPlatform = React.useCallback(async () => {
     try {
-      const [health, info, metricText, tools] = await Promise.all([
+      const [health, info, metricText, tools, toolsQuality, graph, agentHistory, evalHistory] = await Promise.all([
         request<{status: string; checks: Record<string, string>}>('/health/ready'), request<{version: string; capabilities: string[]}>(API),
         fetch('/metrics').then(r => r.ok ? r.text() : Promise.reject(new Error('metrics endpoint unavailable'))),
-        request<{tools: unknown[]}>(`${API}/mcp/tools`)
+        request<{tools: unknown[]}>(`${API}/mcp/tools`),
+        request<Record<string, unknown>>(`${API}/data/quality`),
+        request<Record<string, unknown>>(`${API}/graph/summary`),
+        request<{items: Array<Record<string, unknown>>}>(`${API}/agents/runs?limit=5`),
+        request<{items: Array<{id: string; suite: string; metrics: Record<string, unknown>; created_at: string}>}>(`${API}/evaluations/results?limit=1`)
       ]);
       const parsed: Record<string, number | null> = {};
       for (const line of metricText.split('\n')) { const m = line.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*)\s+([0-9.eE+-]+)$/); if (m) parsed[m[1]] = Number(m[2]); }
+      setDataQuality(toolsQuality);
+      setGraphSummary(graph);
+      setAgentRuns(agentHistory.items);
+      setEvaluationResult(evalHistory.items[0]?.metrics || null);
       setPlatform({ api: health.status, version: info.version, readiness: health.checks, metrics: parsed, capabilities: info.capabilities,
         integrations: [
           {name:"PostgreSQL",state:health.checks.postgres === "ok" ? "online" : "offline",detail:"Persistent event, alert, case and audit records"},
@@ -82,6 +94,12 @@ function App() {
     try { await work(); if (success) setMessage(success); await refresh(); if (page === "platform") await refreshPlatform(); }
     catch (e) { setError(e instanceof Error ? e.message : "Request failed"); }
     finally { setBusy(false); }
+  }
+  async function runEvaluation() {
+    await action(async () => {
+      const result = await request<Record<string, unknown>>(`${API}/evaluations/run`, { method: "POST" });
+      setEvaluationResult(result);
+    }, "Synthetic detection benchmark completed and persisted.");
   }
   async function simulateEvent() {
     await action(async () => { await request(`${API}/events`, { method: "POST", body: JSON.stringify({ source:"aegis-demo", event_type:eventType, severity:"high", username:"demo-admin", src_ip:"198.51.100.23", host:"demo-endpoint-01", message:eventMessage, raw:{simulation:true,dataset:"safe-synthetic"} }) }); }, "Synthetic event submitted. Refreshing detections.");
@@ -135,9 +153,19 @@ function App() {
           <div className="platform-banner"><div><span>CORE PLATFORM</span><strong className={platform?.api==="ready"?"text-green":"text-amber"}>{platform?.api?.toUpperCase()||"CHECKING"}</strong><small>API v{platform?.version||"—"} · PostgreSQL and Redis readiness</small></div><div><span>DATA PERSISTENCE</span><strong>{platform?.readiness.postgres==="ok"?"HEALTHY":"CHECK"}</strong><small>PostgreSQL-backed operational records</small></div><div><span>OBSERVABILITY</span><strong>BASELINE</strong><small>Prometheus-format counters at /metrics</small></div></div>
           <div className="section-head"><div><p className="eyebrow">DEPENDENCY HEALTH</p><h2>Stack inventory</h2></div><span className="hint-inline">Statuses are based on health probes/configuration, not assumed from the roadmap.</span></div><div className="integration-grid">{(platform?.integrations||[]).map(x=><article className="surface integration-card" key={x.name}><div className="integration-head"><b>{x.name}</b><span className={`integration-state ${x.state}`}>{x.state}</span></div><p>{x.detail}</p></article>)}</div>
           <div className="section-head"><div><p className="eyebrow">RUNTIME TELEMETRY</p><h2>Measured counters</h2></div></div><div className="metric-grid compact">{Object.entries(platform?.metrics||{}).map(([k,v])=><article className="metric-card" key={k}><span className="metric-top">{k}</span><strong>{fmt(v)}</strong><small>Prometheus endpoint sample</small></article>)}{!platform?.metrics||!Object.keys(platform.metrics).length?<p className="muted">No counters returned yet. Refresh diagnostics when the API is healthy.</p>:null}</div>
-          <div className="section-head"><div><p className="eyebrow">MODEL / AGENT / RAG EVALUATION</p><h2>Evaluation readiness</h2></div></div><div className="surface eval-table"><div className="eval-row eval-header"><span>COMPONENT</span><span>WHAT TO MEASURE</span><span>STATUS</span></div>
-            {[{name:"Rule detection",measure:"Precision, recall, false-positive rate on labeled events",state:"RULE BASELINE ONLY",cls:"partial"},{name:"ML models",measure:"F1, ROC-AUC, PR-AUC, drift and calibration on held-out labels",state:"NO MODEL REGISTERED",cls:"planned"},{name:"Agent workflow",measure:"Task success, tool-call validity, retries, latency and cost",state:"NO AGENT RUNTIME",cls:"planned"},{name:"RAG / retrieval",measure:"Recall@k, MRR / nDCG, groundedness and citation coverage",state:"KEYWORD BASELINE",cls:"partial"},{name:"Graph analytics",measure:"Entity resolution quality, path relevance and query latency",state:"NOT WIRED",cls:"planned"},{name:"Streaming pipeline",measure:"Throughput, consumer lag, event loss and end-to-end latency",state:"NOT WIRED",cls:"planned"},{name:"Local LLM",measure:"Latency, tokens/sec, task rubric and grounded response rate",state:"OPTIONAL / UNVERIFIED",cls:"partial"}].map(r=><div className="eval-row" key={r.name}><b>{r.name}</b><span>{r.measure}</span><span className={`eval-state ${r.cls}`}>{r.state}</span></div>)}</div>
-          <div className="notice-panel"><b>Why quality scores are blank</b><p>Scores such as model accuracy, agent success rate, RAG recall and graph quality must be calculated from repeatable test cases and labeled expected outputs. This baseline does not yet have those evaluation datasets or integrated runtimes, so it intentionally does not invent scores. The next implementation stage should add versioned evaluation datasets, repeatable benchmark runs, persisted results and model/agent traces.</p></div>
+          <div className="section-head"><div><p className="eyebrow">REPRODUCIBLE BENCHMARKS</p><h2>Detection baseline evaluation</h2></div><button className="button primary" disabled={busy} onClick={()=>void runEvaluation()}>{busy?"Running…":"▶ Run benchmark"}</button></div>
+          <div className="metric-grid compact">{[
+            ["Precision", evaluationResult?.precision], ["Recall", evaluationResult?.recall],
+            ["F1 score", evaluationResult?.f1], ["Accuracy", evaluationResult?.accuracy]
+          ].map(([label,value])=><article className="metric-card" key={String(label)}><span className="metric-top">{label}</span><strong>{typeof value==="number" ? `${(value*100).toFixed(1)}%` : "—"}</strong><small>Versioned synthetic dataset only</small></article>)}</div>
+          <div className="notice-panel"><b>Benchmark provenance</b><p>{evaluationResult ? `Dataset: ${String(evaluationResult.dataset_version)} · Samples: ${String(evaluationResult.sample_count)} · Passed: ${String(evaluationResult.pass_count)}. ${Array.isArray(evaluationResult.limitations) ? evaluationResult.limitations.join("; ") : ""}` : "Run the benchmark to persist a measured result. No score is displayed until a run exists."} Scores describe the included synthetic cases only; they are not claims about production detection quality or a trained ML model.</p></div>
+          <div className="section-head"><div><p className="eyebrow">DATA ENGINEERING</p><h2>Event data quality</h2></div></div>
+          <div className="surface pad"><p>Stored events: <b>{fmt(dataQuality?.event_count as number|undefined)}</b> · Alerts: <b>{fmt(dataQuality?.alert_count as number|undefined)}</b></p><div className="eval-row"><b>Source IP completeness</b><span>{(dataQuality?.completeness as Record<string,unknown>|undefined)?.src_ip_pct == null ? "—" : `${String((dataQuality?.completeness as Record<string,unknown>).src_ip_pct)}%`}</span><span className="eval-state partial">MEASURED</span></div><div className="eval-row"><b>Host completeness</b><span>{(dataQuality?.completeness as Record<string,unknown>|undefined)?.host_pct == null ? "—" : `${String((dataQuality?.completeness as Record<string,unknown>).host_pct)}%`}</span><span className="eval-state partial">MEASURED</span></div></div>
+          <div className="section-head"><div><p className="eyebrow">AGENT OBSERVABILITY</p><h2>Recent investigation runs</h2></div></div>
+          <div className="surface eval-table"><div className="eval-row eval-header"><span>AGENT</span><span>TASK / TRACE</span><span>DURATION</span></div>{agentRuns.map((run,i)=><div className="eval-row" key={String(run.id||i)}><b>{String(run.agent_name||"—")}</b><span>{String(run.task||"—")} · {String(run.status||"—")}</span><span>{String(run.duration_ms??"—")} ms</span></div>)}{!agentRuns.length&&<p className="empty-state">Run an investigation from Detection & response to populate agent traces.</p>}</div>
+          <div className="section-head"><div><p className="eyebrow">GRAPH-LITE</p><h2>Event relationship summary</h2></div></div>
+          <div className="surface pad"><p>Mode: <b>{String(graphSummary?.mode||"checking")}</b> · Nodes: <b>{fmt(graphSummary?.node_count as number|undefined)}</b> · Edges: <b>{fmt(graphSummary?.edge_count as number|undefined)}</b></p><p className="muted">{String(graphSummary?.note||"Graph associations are derived from stored events; no causal inference is claimed.")}</p></div>
+          <div className="notice-panel"><b>What is and is not implemented</b><p>The benchmark is a deterministic rule baseline on synthetic labels, agent traces record investigation steps and duration, retrieval remains keyword-based, and graph-lite derives associations from PostgreSQL. A trained ML model, vector embeddings, full MCP/A2A/ACP protocol servers, and Kafka-backed ingestion are not represented as implemented merely because optional containers exist.</p></div>
         </>}
         {(message||error)&&<div className={`toast ${error?"error":"success"}`} role="status"><b>{error?"Request failed":"Done"}</b><span>{error||message}</span><button className="toast-close" onClick={()=>{setMessage("");setError("");}}>×</button></div>}
       </section><footer className="app-footer"><span>AEGIS AI SOC <b>·</b> SELF-HOSTED DEFENSIVE POC</span><span>Human-reviewed investigations · no automated response actions</span></footer>

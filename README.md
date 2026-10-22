@@ -64,6 +64,17 @@ The web console includes Command center, Detection & response, Intel & knowledge
 
 The frontend's Vite proxy forwards `/api`, `/health` and `/metrics` to the API container. Ports remain bound to loopback by default.
 
+## Evaluation, agent traces and graph-lite (baseline)
+
+- `POST /api/v1/evaluations/run` runs the versioned `aegis-synthetic-detection-v1` rule benchmark and persists precision, recall, F1, accuracy, confusion counts and per-case outcomes.
+- `GET /api/v1/evaluations/results` returns saved benchmark runs.
+- `GET /api/v1/agents/runs` returns persisted investigation-agent traces, duration and evidence counts. Investigation requests store a trace whether Ollama succeeds or falls back.
+- `GET /api/v1/data/quality` reports completeness for source IP, host and username fields in stored events.
+- `GET /api/v1/graph/summary` derives event-type/host/user associations from PostgreSQL. It is graph-lite and does not query Neo4j or infer causality.
+- The Stack & evaluation page can run the benchmark and shows measured event quality, graph-lite counts and recent investigation traces.
+
+The synthetic benchmark is a software regression signal, **not** a trained ML model evaluation and not a production-quality claim. Real ML requires representative labeled data and a versioned train/test split. Retrieval remains keyword-based until embedding generation, vector storage, chunking and retrieval evaluation are connected. The MCP endpoint remains a catalog, not a full MCP transport; A2A/ACP are not implemented. Optional Kafka, Neo4j, Qdrant, ClickHouse, MinIO and Ollama profiles are not automatically wired into the event pipeline merely by starting their containers.
+
 ## Important limitations
 
 This is a development POC, not a production-ready SOC: authentication/RBAC, TLS, secrets management, external log collectors, Kafka-backed ingestion wiring, Sigma rule compatibility, vector embedding ingestion, a full MCP transport, A2A/ACP protocol implementations, and production hardening remain future work. Kafka and Neo4j are optional infrastructure profiles and are not yet wired into the core ingestion path. The included detections are illustrative heuristics, not a replacement for tested detection content. Review all alerts and AI output with a human analyst.
