@@ -230,3 +230,66 @@ def test_event_domain_is_normalized_into_raw_context():
     ))
     assert event["raw"]["_aegis_domain"] == "telecom"
     assert any(rule["id"] == "DOMAIN-TELECOM-001" for rule in rule_matches(event))
+
+
+def test_correlation_finds_domain_sequence_for_same_entity():
+    from datetime import datetime, timezone
+    import app.main as main
+
+    events = [
+        {"id": "e1", "event_time": datetime(2026, 1, 1, 10, 0, tzinfo=timezone.utc),
+         "event_type": "account_takeover", "username": "synthetic-user",
+         "raw": {"_aegis_domain": "ecommerce"}},
+        {"id": "e2", "event_time": datetime(2026, 1, 1, 10, 12, tzinfo=timezone.utc),
+         "event_type": "payment_abuse", "username": "synthetic-user",
+         "raw": {"_aegis_domain": "ecommerce"}},
+    ]
+
+    leads = main.correlate_events(events)
+    assert len(leads) == 1
+    assert leads[0]["rule_id"] == "CORR-ECOM-001"
+    assert leads[0]["evidence_event_ids"] == ["e1", "e2"]
+    assert leads[0]["observed_interval_seconds"] == 720
+    assert "do not prove causality" in " ".join(leads[0]["limitations"])
+
+
+def test_correlation_rejects_different_entities_and_cross_domain_pairs():
+    from datetime import datetime, timezone
+    import app.main as main
+
+    base_time = datetime(2026, 1, 1, 10, 0, tzinfo=timezone.utc)
+    events = [
+        {"id": "e1", "event_time": base_time, "event_type": "sim_swap",
+         "username": "user-a", "raw": {"_aegis_domain": "telecom"}},
+        {"id": "e2", "event_time": base_time, "event_type": "subscriber_account_abuse",
+         "username": "user-b", "raw": {"_aegis_domain": "telecom"}},
+        {"id": "e3", "event_time": base_time, "event_type": "payment_abuse",
+         "username": "user-a", "raw": {"_aegis_domain": "ecommerce"}},
+    ]
+
+    assert main.correlate_events(events) == []
+
+
+def test_correlation_respects_time_window_and_event_order():
+    from datetime import datetime, timedelta, timezone
+    import app.main as main
+
+    start = datetime(2026, 1, 1, 10, 0, tzinfo=timezone.utc)
+    events = [
+        {"id": "late-trigger", "event_time": start + timedelta(minutes=31),
+         "event_type": "credential_abuse", "username": "cloud-user",
+         "raw": {"_aegis_domain": "cloud_saas"}},
+        {"id": "too-late", "event_time": start + timedelta(minutes=62),
+         "event_type": "privilege_escalation", "username": "cloud-user",
+         "raw": {"_aegis_domain": "cloud_saas"}},
+        {"id": "later-only", "event_time": start,
+         "event_type": "transaction_abuse", "username": "finance-user",
+         "raw": {"_aegis_domain": "financial_services"}},
+    ]
+
+    assert main.correlate_events(events) == []
+
+
+def test_correlations_endpoint_rejects_unknown_domain_without_database_access():
+    response = client.get("/api/v1/correlations?domain=unknown")
+    assert response.status_code == 400

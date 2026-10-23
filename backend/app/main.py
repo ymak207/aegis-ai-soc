@@ -838,6 +838,98 @@ def data_quality():
                              "username_pct": round(100 * (events-missing_user)/events, 2) if events else None},
             "note": "Completeness is measured from stored events; null means no events exist."}
 
+
+
+# Explainable multi-event correlations. These are investigation leads, not proof of compromise.
+CORRELATION_RULES = {
+    "ecommerce": {"id": "CORR-ECOM-001", "first": "account_takeover", "second": "payment_abuse", "window_minutes": 30, "entity": "username"},
+    "telecom": {"id": "CORR-TEL-001", "first": "sim_swap", "second": "subscriber_account_abuse", "window_minutes": 60, "entity": "username"},
+    "logistics": {"id": "CORR-LOG-001", "first": "shipment_route_deviation", "second": "warehouse_access_abuse", "window_minutes": 60, "entity": "host"},
+    "cloud_saas": {"id": "CORR-CLOUD-001", "first": "credential_abuse", "second": "privilege_escalation", "window_minutes": 30, "entity": "username"},
+    "financial_services": {"id": "CORR-FIN-001", "first": "account_takeover", "second": "transaction_abuse", "window_minutes": 30, "entity": "username"},
+}
+
+
+def correlate_events(events: list[dict]) -> list[dict]:
+    """Create deterministic, explainable cross-event leads from already-normalized events."""
+    normalized = []
+    for event in events:
+        raw = event.get("raw") or {}
+        domain = raw.get("_aegis_domain", event.get("domain"))
+        rule = CORRELATION_RULES.get(domain)
+        if not rule:
+            continue
+        event_time = event.get("event_time")
+        if isinstance(event_time, str):
+            try:
+                event_time = datetime.fromisoformat(event_time.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+        if not isinstance(event_time, datetime):
+            continue
+        if event_time.tzinfo is None:
+            event_time = event_time.replace(tzinfo=timezone.utc)
+        entity_value = event.get(rule["entity"])
+        if not entity_value:
+            continue
+        normalized.append({**event, "_domain": domain, "_rule": rule, "_time": event_time,
+                           "_entity_value": str(entity_value)})
+
+    leads = []
+    for later in normalized:
+        rule = later["_rule"]
+        if later.get("event_type") != rule["second"]:
+            continue
+        candidates = []
+        for earlier in normalized:
+            if earlier["_domain"] != later["_domain"] or earlier["_entity_value"] != later["_entity_value"]:
+                continue
+            if earlier.get("event_type") != rule["first"] or earlier["_time"] > later["_time"]:
+                continue
+            delta_seconds = (later["_time"] - earlier["_time"]).total_seconds()
+            if delta_seconds <= rule["window_minutes"] * 60:
+                candidates.append((delta_seconds, earlier))
+        if not candidates:
+            continue
+        # Pick the closest preceding trigger so one later event does not create duplicate leads.
+        delta_seconds, earlier = min(candidates, key=lambda item: item[0])
+        leads.append({
+            "id": f'{rule["id"]}:{earlier.get("id")}:{later.get("id")}',
+            "rule_id": rule["id"], "domain": later["_domain"],
+            "title": f'{later["_domain"].replace("_", " ").title()} sequence requires review',
+            "severity": "high", "status": "investigation_lead",
+            "entity_type": rule["entity"], "entity_value": later["_entity_value"],
+            "window_minutes": rule["window_minutes"],
+            "observed_interval_seconds": int(delta_seconds),
+            "evidence_event_ids": [earlier.get("id"), later.get("id")],
+            "event_types": [rule["first"], rule["second"]],
+            "explanation": f'Observed {rule["first"]} followed by {rule["second"]} for the same {rule["entity"]} within {rule["window_minutes"]} minutes.',
+            "limitations": ["Deterministic correlation heuristic", "Shared entity and event order do not prove causality or compromise"]
+        })
+    return sorted(leads, key=lambda item: (item["domain"], item["observed_interval_seconds"]))
+
+
+@app.get("/api/v1/correlations")
+def list_correlations(limit: int = Query(default=500, ge=1, le=2000),
+                      domain: str | None = None):
+    """Return explainable investigation leads derived from recent stored events."""
+    if domain is not None and domain not in DOMAIN_CATALOG:
+        raise HTTPException(400, "Unsupported domain")
+    with connect() as conn:
+        rows = conn.execute("""SELECT id,event_time,event_type,username,host,message,raw
+            FROM (SELECT id,event_time,event_type,username,host,message,raw
+                  FROM security_events ORDER BY event_time DESC LIMIT %s) recent
+            ORDER BY event_time ASC""", (limit,)).fetchall()
+    events = [{"id": row[0], "event_time": row[1], "event_type": row[2],
+               "username": row[3], "host": row[4], "message": row[5], "raw": row[6]}
+              for row in rows]
+    leads = correlate_events(events)
+    if domain is not None:
+        leads = [lead for lead in leads if lead["domain"] == domain]
+    return {"mode": "deterministic-multi-event-correlation", "events_considered": len(events),
+            "lead_count": len(leads), "items": leads,
+            "note": "Leads are prioritization hints for human review, not proof of malicious activity."}
+
 @app.get("/api/v1/graph/summary")
 def graph_summary(limit: int = Query(default=500, ge=1, le=2000)):
     """A relational graph-lite view derived from event records; Neo4j is not required."""
