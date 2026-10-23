@@ -178,3 +178,55 @@ def test_platform_catalog_evaluation_principles_warn_against_cross_domain_scores
     principles = " ".join(body["evaluation_principles"]).lower()
     assert "across domains" in principles
     assert "false positives" in principles
+
+
+def test_domain_rules_match_only_the_selected_domain():
+    import app.main as main
+
+    for domain, details in main.DOMAIN_CATALOG.items():
+        family = details["event_families"][0]
+        matches = main.domain_rule_matches({
+            "event_type": family,
+            "message": "synthetic domain signal",
+            "raw": {"_aegis_domain": domain},
+        })
+        assert len(matches) == 1
+        assert matches[0]["id"] == f"DOMAIN-{domain.upper()}-001"
+
+
+def test_domain_rules_do_not_match_another_domains_event_family():
+    import app.main as main
+
+    assert main.domain_rule_matches({
+        "event_type": "sim_swap",
+        "message": "synthetic signal",
+        "raw": {"_aegis_domain": "ecommerce"},
+    }) == []
+
+
+def test_domain_evaluation_is_explicitly_a_small_smoke_test():
+    import app.main as main
+
+    for domain in main.DOMAIN_CATALOG:
+        result = main.score_domain_dataset(domain, main.DOMAIN_EVAL_DATASETS[domain])
+        assert result["sample_count"] == 3
+        assert result["dataset_version"] == f"aegis-{domain}-smoke-v1"
+        assert result["evaluation_type"] == "synthetic-domain-rule-smoke-test"
+        assert "not production detection validation" in " ".join(result["limitations"]).lower()
+
+
+def test_domain_evaluation_api_rejects_unknown_domain():
+    response = client.get("/api/v1/platform/domains/unknown/evaluation")
+    assert response.status_code == 404
+
+
+def test_event_domain_is_normalized_into_raw_context():
+    event = normalized_event(EventIn(
+        event_type="sim_swap",
+        domain="telecom",
+        message="synthetic SIM swap alert",
+        source="unit-test",
+        event_time="2026-01-01T00:00:00Z",
+    ))
+    assert event["raw"]["_aegis_domain"] == "telecom"
+    assert any(rule["id"] == "DOMAIN-TELECOM-001" for rule in rule_matches(event))

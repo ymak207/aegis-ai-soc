@@ -179,6 +179,7 @@ class EventIn(BaseModel):
     event_time: datetime | None = None
     source: str = Field(default="manual", min_length=1, max_length=100)
     event_type: str = Field(min_length=1, max_length=100)
+    domain: str = Field(default="cloud_saas", pattern="^(ecommerce|telecom|logistics|cloud_saas|financial_services)$")
     severity: str = "medium"
     src_ip: str | None = None
     dst_ip: str | None = None
@@ -241,8 +242,9 @@ def normalized_event(payload: EventIn) -> dict:
     if event_time.tzinfo is None:
         event_time = event_time.replace(tzinfo=timezone.utc)
     event_type = re.sub(r"[^a-z0-9_]+", "_", payload.event_type.lower()).strip("_")
-    raw = payload.raw or {}
-    stable = json.dumps({"source": payload.source, "type": event_type, "time": event_time.isoformat(),
+    raw = dict(payload.raw or {})
+    raw["_aegis_domain"] = payload.domain
+    stable = json.dumps({"source": payload.source, "domain": payload.domain, "type": event_type, "time": event_time.isoformat(),
                          "src_ip": payload.src_ip, "username": payload.username, "message": payload.message},
                         sort_keys=True)
     return {"id": str(uuid.uuid4()), "event_time": event_time, "source": payload.source,
@@ -259,7 +261,26 @@ def rule_matches(event: dict) -> list[dict]:
     if any(term in message for term in ("powershell -enc", "mimikatz", "credential dump")):
         matches.append({"id": "BEHAVIOR-001", "title": "Suspicious command-line pattern",
                         "severity": "high", "description": "Message matched a high-risk command-line heuristic."})
+    matches.extend(domain_rule_matches(event))
     return matches
+
+def domain_rule_matches(event: dict) -> list[dict]:
+    """Match domain event families only when an explicit supported domain is present."""
+    raw = event.get("raw") or {}
+    domain = raw.get("_aegis_domain", event.get("domain", "cloud_saas"))
+    if domain not in DOMAIN_CATALOG:
+        return []
+    event_type = event.get("event_type", "")
+    if event_type not in DOMAIN_CATALOG[domain]["event_families"]:
+        return []
+    rule_id = "DOMAIN-" + domain.upper() + "-001"
+    return [{
+        "id": rule_id,
+        "title": f"{DOMAIN_CATALOG[domain]['label']} suspicious activity",
+        "severity": "high",
+        "description": f"Event family {event_type} requires domain-aware analyst review.",
+    }]
+
 
 def enrich_indicator(conn, event: dict) -> bool:
     candidates = [("ip", event.get("src_ip")), ("ip", event.get("dst_ip"))]
@@ -388,7 +409,7 @@ def system_info():
             "utc_time": datetime.now(timezone.utc).isoformat(),
             "capabilities": ["event-ingestion", "rule-based-detection", "alert-management", "case-management",
                              "threat-intelligence", "audit-trail", "knowledge-retrieval", "local-llm-investigation",
-                             "mcp-json-rpc-tools", "integration-health-probes", "metrics", "baseline-evaluation", "agent-run-traces", "data-quality", "graph-lite"]}
+                             "mcp-json-rpc-tools", "integration-health-probes", "metrics", "baseline-evaluation", "agent-run-traces", "data-quality", "graph-lite", "domain-aware-detection", "domain-evaluation-smoke-tests"]}
 
 @app.get("/api/v1/platform/catalog")
 def platform_catalog():
@@ -703,6 +724,70 @@ def score_detection_dataset(dataset: list[dict]) -> dict:
             "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4),
             "accuracy": round((tp + tn) / len(examples), 4) if examples else 0.0,
             "pass_count": sum(1 for item in examples if item["pass"]), "examples": examples}
+
+
+DOMAIN_EVAL_DATASETS = {
+    domain: [
+        {"type": family, "message": f"Synthetic {family} signal for {domain}", "expected": True}
+        for family in details["event_families"][:2]
+    ] + [
+        {"type": "routine_activity", "message": f"Routine successful operation for {domain}", "expected": False}
+    ]
+    for domain, details in DOMAIN_CATALOG.items()
+}
+
+
+def score_domain_dataset(domain: str, dataset: list[dict]) -> dict:
+    """Score domain-aware rules without requiring database access."""
+    if domain not in DOMAIN_CATALOG:
+        raise ValueError(f"Unsupported domain: {domain}")
+    tp = fp = tn = fn = 0
+    examples = []
+    for index, sample in enumerate(dataset):
+        event = {"event_type": sample["type"], "message": sample["message"],
+                 "raw": {"_aegis_domain": domain}}
+        predicted = bool(domain_rule_matches(event))
+        expected = bool(sample["expected"])
+        if predicted and expected: tp += 1
+        elif predicted and not expected: fp += 1
+        elif not predicted and not expected: tn += 1
+        else: fn += 1
+        examples.append({"case": index + 1, "event_type": sample["type"],
+                         "expected_detection": expected, "predicted_detection": predicted,
+                         "pass": predicted == expected})
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    return {"domain": domain, "dataset_version": f"aegis-{domain}-smoke-v1",
+            "evaluation_type": "synthetic-domain-rule-smoke-test", "sample_count": len(examples),
+            "confusion_matrix": {"tp": tp, "fp": fp, "tn": tn, "fn": fn},
+            "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4),
+            "accuracy": round((tp + tn) / len(examples), 4) if examples else 0.0,
+            "pass_count": sum(1 for item in examples if item["pass"]), "examples": examples,
+            "limitations": ["Three synthetic smoke cases only", "Not production detection validation",
+                            "Rules require domain-specific labeled datasets before operational use"]}
+
+
+@app.get("/api/v1/platform/domains/{domain}/evaluation")
+def get_domain_evaluation(domain: str):
+    if domain not in DOMAIN_EVAL_DATASETS:
+        raise HTTPException(404, "Unknown domain; query /api/v1/platform/catalog for supported domains")
+    return score_domain_dataset(domain, DOMAIN_EVAL_DATASETS[domain])
+
+
+@app.post("/api/v1/platform/domains/{domain}/evaluation")
+def run_domain_evaluation(domain: str):
+    if domain not in DOMAIN_EVAL_DATASETS:
+        raise HTTPException(404, "Unknown domain; query /api/v1/platform/catalog for supported domains")
+    result = score_domain_dataset(domain, DOMAIN_EVAL_DATASETS[domain])
+    run_id = str(uuid.uuid4())
+    with connect() as conn:
+        conn.execute("INSERT INTO evaluation_runs(id,suite,metrics) VALUES(%s,%s,%s)",
+                     (run_id, f"domain-detection-{domain}", Jsonb(result)))
+        audit(conn, "evaluation.completed", "evaluation", run_id,
+              {"suite": f"domain-detection-{domain}", "dataset_version": result["dataset_version"],
+               "sample_count": result["sample_count"], "f1": result["f1"]})
+    return {"id": run_id, "suite": f"domain-detection-{domain}", **result}
 
 
 @app.post("/api/v1/evaluations/run")
