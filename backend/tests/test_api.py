@@ -69,3 +69,52 @@ def test_mcp_rejects_unknown_tool_without_executing_anything():
 def test_mcp_rejects_invalid_json_rpc_method():
     response = client.post("/mcp", json={"jsonrpc": "2.0", "id": 4, "method": "not-a-method"})
     assert response.json()["error"]["code"] == -32601
+
+
+def test_kafka_publisher_is_disabled_by_default(monkeypatch):
+    import app.main as main
+    monkeypatch.setattr(main, "KAFKA_ENABLED", False)
+    assert main._publish_kafka_events([{"id": "synthetic-test"}]) == {"state": "disabled", "published": 0}
+
+
+def test_vector_search_failure_is_a_safe_fallback(monkeypatch):
+    import app.main as main
+    monkeypatch.setattr(main, "_embed_text", lambda _text: (_ for _ in ()).throw(RuntimeError("model unavailable")))
+    assert main._vector_search("authentication failures", 5) is None
+
+def test_all_event_type_rule_groups():
+    cases = [
+        ("authentication_failure", "login failed", "AUTH-001"),
+        ("failed_login", "invalid password", "AUTH-001"),
+        ("threat_indicator_match", "synthetic IOC match", "NET-001"),
+        ("suspicious_process", "unknown process", "ENDPOINT-001"),
+        ("malware_detected", "synthetic malware alert", "ENDPOINT-001"),
+        ("privilege_escalation", "privilege changed", "PRIV-001"),
+    ]
+
+    for event_type, message, expected_rule in cases:
+        matches = rule_matches({
+            "event_type": event_type,
+            "message": message,
+        })
+        assert expected_rule in {rule["id"] for rule in matches}
+
+
+def test_benign_message_without_suspicious_terms_does_not_match():
+    matches = rule_matches({
+        "event_type": "normal_activity",
+        "message": "scheduled backup completed successfully",
+    })
+
+    assert matches == []
+
+
+def test_command_heuristic_can_overlap_with_event_type_rule():
+    matches = rule_matches({
+        "event_type": "suspicious_process",
+        "message": "mimikatz detected in synthetic simulation",
+    })
+
+    rule_ids = [rule["id"] for rule in matches]
+    assert "ENDPOINT-001" in rule_ids
+    assert "BEHAVIOR-001" in rule_ids

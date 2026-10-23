@@ -35,6 +35,12 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "local-dev-change-me")
 REDIS_URL = os.getenv("REDIS_URL", "")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333").rstrip("/")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "aegis_knowledge")
+KAFKA_ENABLED = os.getenv("KAFKA_ENABLED", "false").lower() == "true"
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "aegis.security.events")
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS security_events (
  id TEXT PRIMARY KEY, event_time TIMESTAMPTZ NOT NULL, source TEXT NOT NULL,
@@ -201,6 +207,77 @@ def enrich_indicator(conn, event: dict) -> bool:
             return True
     return False
 
+def _http_json(url: str, payload: dict | None = None, timeout: float = 8.0, method: str | None = None) -> dict:
+    """Small stdlib JSON client for optional local integrations; never logs secrets or payloads."""
+    import urllib.request
+    data = json.dumps(payload).encode() if payload is not None else None
+    request = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method=method)
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        raw = response.read(2_000_000)
+    return json.loads(raw) if raw else {}
+
+
+def _embed_text(text: str) -> list[float]:
+    result = _http_json(OLLAMA_URL.rstrip("/") + "/api/embed", {"model": OLLAMA_EMBED_MODEL, "input": text[:12000]}, timeout=20)
+    vectors = result.get("embeddings") or []
+    if not vectors or not isinstance(vectors[0], list):
+        raise RuntimeError("Embedding model returned no vector")
+    return [float(v) for v in vectors[0]]
+
+
+def _qdrant_request(path: str, payload: dict | None = None, method: str | None = None) -> dict:
+    return _http_json(QDRANT_URL + path, payload, timeout=8, method=method)
+
+
+def _vector_upsert_document(document: dict) -> bool:
+    """Index a stored document in Qdrant using a local Ollama embedding; return False on optional-service failure."""
+    try:
+        vector = _embed_text(document["title"] + "\n\n" + document["content"])
+        collection_path = "/collections/" + QDRANT_COLLECTION
+        try:
+            _qdrant_request(collection_path)
+        except Exception:
+            _qdrant_request(collection_path, {"vectors": {"size": len(vector), "distance": "Cosine"}}, "PUT")
+        _qdrant_request(collection_path + "/points?wait=true", {"points": [{"id": document["id"], "vector": vector,
+            "payload": {"document_id": document["id"], "title": document["title"], "content": document["content"][:12000], "source": document["source"]}}]}, "PUT")
+        return True
+    except Exception:
+        return False
+
+
+def _vector_search(query: str, limit: int) -> list[dict] | None:
+    try:
+        vector = _embed_text(query)
+        result = _qdrant_request("/collections/" + QDRANT_COLLECTION + "/points/search", {"vector": vector, "limit": limit, "with_payload": True}, "POST")
+        return [{"id": hit.get("payload", {}).get("document_id", str(hit.get("id"))),
+                 "title": hit.get("payload", {}).get("title", "Untitled"), "content": hit.get("payload", {}).get("content", ""),
+                 "source": hit.get("payload", {}).get("source", "unknown"), "score": round(float(hit.get("score", 0)), 4)}
+                for hit in result.get("result", [])]
+    except Exception:
+        return None
+
+
+def _publish_kafka_events(events: list[dict]) -> dict:
+    """Best-effort optional Kafka publication; broker failures never roll back persisted PostgreSQL events."""
+    if not KAFKA_ENABLED or not events:
+        return {"state": "disabled", "published": 0}
+    producer = None
+    try:
+        from kafka import KafkaProducer
+        producer = KafkaProducer(bootstrap_servers=[x.strip() for x in KAFKA_BOOTSTRAP_SERVERS.split(",") if x.strip()],
+            value_serializer=lambda value: json.dumps(value, default=str).encode("utf-8"), request_timeout_ms=3000, max_block_ms=3000)
+        for event in events:
+            producer.send(KAFKA_TOPIC, event)
+        producer.flush(timeout=5)
+        return {"state": "published", "published": len(events), "topic": KAFKA_TOPIC}
+    except Exception as exc:
+        return {"state": "error", "published": 0, "error_type": type(exc).__name__}
+    finally:
+        if producer is not None:
+            try: producer.close(timeout=1)
+            except Exception: pass
+
+
 @app.on_event("startup")
 def startup():
     # Compose starts the API only after PostgreSQL reports healthy.
@@ -266,7 +343,7 @@ def ingest_event(payload: EventIn):
 
 @app.post("/api/v1/events/batch")
 def ingest_batch(batch: EventBatch):
-    created, alert_ids = [], []
+    created, alert_ids, kafka_events = [], [], []
     with connect() as conn:
         for payload in batch.events:
             event = normalized_event(payload)
@@ -288,8 +365,10 @@ def ingest_batch(batch: EventBatch):
                 if row:
                     made.append(row[0]); alert_ids.append(row[0])
             audit(conn, "event.ingested", "event", event["id"], {"event_type": event["event_type"], "alert_count": len(made), "indicator_match": indicator_match})
+            kafka_events.append({k: event.get(k) for k in ("id", "event_time", "source", "event_type", "severity", "src_ip", "dst_ip", "username", "host", "message", "fingerprint")})
             created.append({"event_id": event["id"], "duplicate": False, "alerts": made})
-    return {"accepted": len(created), "items": created, "alert_ids": alert_ids}
+    streaming = _publish_kafka_events(kafka_events)
+    return {"accepted": len(created), "items": created, "alert_ids": alert_ids, "streaming": streaming}
 
 @app.get("/api/v1/events")
 def list_events(limit: int = Query(default=50, ge=1, le=500), event_type: str | None = None):
@@ -385,10 +464,34 @@ def add_document(body: DocumentIn):
     with connect() as conn:
         conn.execute("INSERT INTO knowledge_documents(id,title,content,source) VALUES(%s,%s,%s,%s)",(did,body.title,body.content,body.source))
         audit(conn,"knowledge.document_added","document",did,{"title":body.title})
-    return {"id":did,"title":body.title,"source":body.source}
+    vector_indexed = _vector_upsert_document({"id": did, "title": body.title, "content": body.content, "source": body.source})
+    return {"id":did,"title":body.title,"source":body.source,
+            "retrieval_status":"vector_indexed" if vector_indexed else "stored_keyword_fallback",
+            "note":"PostgreSQL is authoritative; vector indexing is best-effort."}
+
+@app.post("/api/v1/knowledge/reindex")
+def reindex_knowledge():
+    """Best-effort reindex of existing PostgreSQL documents into Qdrant."""
+    with connect() as conn:
+        rows = conn.execute("SELECT id,title,content,source FROM knowledge_documents ORDER BY created_at DESC LIMIT 500").fetchall()
+    indexed = 0
+    failed = 0
+    for did, title, content, source in rows:
+        if _vector_upsert_document({"id": did, "title": title, "content": content, "source": source}):
+            indexed += 1
+        else:
+            failed += 1
+    return {"total": len(rows), "indexed": indexed, "failed": failed,
+            "mode": "qdrant-vector" if indexed else "keyword-fallback",
+            "note": "PostgreSQL remains authoritative. Failed vector items remain searchable through keyword fallback."}
+
 
 @app.get("/api/v1/knowledge/search")
 def search_knowledge(q: str = Query(min_length=2, max_length=500), limit: int = Query(default=5, ge=1, le=20)):
+    vector_items = _vector_search(q, limit)
+    if vector_items is not None:
+        return {"query": q, "items": vector_items, "mode": "qdrant-vector", "embedding_model": OLLAMA_EMBED_MODEL,
+                "note": "Local embedding retrieval; inspect evidence before acting."}
     terms=[t.lower() for t in re.findall(r"[a-zA-Z0-9_.-]+",q) if len(t)>1]
     with connect() as conn:
         rows=conn.execute("SELECT id,title,content,source FROM knowledge_documents ORDER BY created_at DESC LIMIT 500").fetchall()
@@ -398,7 +501,7 @@ def search_knowledge(q: str = Query(min_length=2, max_length=500), limit: int = 
         score=sum(text.count(term) for term in terms)
         if score: ranked.append({"id":did,"title":title,"content":content[:4000],"source":source,"score":score})
     ranked.sort(key=lambda x:x["score"],reverse=True)
-    return {"query":q,"items":ranked[:limit],"mode":"keyword-baseline","note":"Local retrieval baseline; vector embeddings are an optional profile."}
+    return {"query":q,"items":ranked[:limit],"mode":"keyword-fallback","note":"Qdrant or the local embedding model was unavailable; results use keyword matching."}
 
 @app.post("/api/v1/investigations")
 def investigate(body: InvestigateIn):
@@ -417,6 +520,10 @@ def investigate(body: InvestigateIn):
             score=sum((title+" "+content).lower().count(t) for t in terms)
             if score: evidence.append({"title":title,"source":source,"content":content[:1500],"score":score})
         evidence.sort(key=lambda x:x["score"],reverse=True)
+    vector_evidence = _vector_search(body.question, 5)
+    retrieval_mode = "qdrant-vector" if vector_evidence is not None else "keyword-fallback"
+    if vector_evidence is not None:
+        evidence = vector_evidence
     answer={"mode":"evidence-based-baseline","question":body.question,"alert":alert,
             "evidence":evidence[:5],
             "assessment":"No local LLM response was requested or available. This baseline returns evidence for analyst review and does not execute response actions.",
@@ -437,7 +544,7 @@ def investigate(body: InvestigateIn):
     duration_ms = int((time.perf_counter() - started) * 1000)
     trace = [
         {"step": "load_alert_context", "status": "ok" if alert else ("skipped" if not body.alert_id else "missing")},
-        {"step": "retrieve_knowledge", "status": "ok", "evidence_count": len(evidence[:5]), "retriever": "keyword-baseline"},
+        {"step": "retrieve_knowledge", "status": "ok", "evidence_count": len(evidence[:5]), "retriever": retrieval_mode},
         {"step": "local_llm", "status": "ok" if answer["mode"] == "local-ollama" else "fallback",
          "model": OLLAMA_MODEL if answer["mode"] == "local-ollama" else None},
         {"step": "recommendations", "status": "ok", "response_actions_executed": False},
@@ -452,7 +559,7 @@ def investigate(body: InvestigateIn):
             (run_id, "investigation-assistant", body.question, "completed", duration_ms,
              Jsonb(trace), Jsonb({"mode": answer["mode"], "evidence_count": len(evidence[:5])})))
         audit(conn,"investigation.run","alert" if body.alert_id else "query",body.alert_id or run_id,
-              {"mode":answer["mode"], "duration_ms": duration_ms, "evidence_count": len(evidence[:5])})
+              {"mode":answer["mode"], "retrieval_mode": retrieval_mode, "duration_ms": duration_ms, "evidence_count": len(evidence[:5])})
     return answer
 
 
@@ -603,7 +710,7 @@ def integration_status():
     results = [
         http_probe("Ollama", OLLAMA_URL.rstrip("/") + "/api/tags"),
         http_probe("Qdrant", os.getenv("QDRANT_URL", "http://qdrant:6333").rstrip("/") + "/readyz"),
-        tcp_probe("Kafka", os.getenv("KAFKA_HOST", "kafka"), int(os.getenv("KAFKA_PORT", "9092")), os.getenv("KAFKA_ENABLED", "false").lower() == "true"),
+        tcp_probe("Kafka", os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092").split(",")[0].split(":")[0], int(os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092").split(",")[0].split(":")[-1]), KAFKA_ENABLED),
         http_probe("Neo4j HTTP", os.getenv("NEO4J_HTTP_URL", "http://neo4j:7474")),
     ]
     return {"items": results, "checked_at": datetime.now(timezone.utc).isoformat(),
