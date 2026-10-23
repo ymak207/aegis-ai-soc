@@ -118,3 +118,32 @@ def test_command_heuristic_can_overlap_with_event_type_rule():
     rule_ids = [rule["id"] for rule in matches]
     assert "ENDPOINT-001" in rule_ids
     assert "BEHAVIOR-001" in rule_ids
+
+
+def test_detection_benchmark_v1_is_frozen_and_perfect_on_its_original_cases():
+    import app.main as main
+
+    result = main.score_detection_dataset(main.DETECTION_EVAL_DATASET_V1)
+    assert len(main.DETECTION_EVAL_DATASET_V1) == 12
+    assert result["confusion_matrix"] == {"tp": 8, "fp": 0, "tn": 4, "fn": 0}
+    assert result["f1"] == 1.0
+
+
+def test_detection_benchmark_v2_exposes_known_heuristic_errors():
+    import app.main as main
+
+    result = main.score_detection_dataset(main.DETECTION_EVAL_DATASET_V2)
+    assert len(main.DETECTION_EVAL_DATASET_V2) == 8
+    assert result["confusion_matrix"] == {"tp": 4, "fp": 1, "tn": 2, "fn": 1}
+    assert result["precision"] == 0.8
+    assert result["recall"] == 0.8
+    assert result["accuracy"] == 0.75
+
+
+def test_detection_benchmark_versions_have_distinct_immutable_labels():
+    import app.main as main
+
+    assert main.DETECTION_EVAL_DATASETS["v1"][0] == "aegis-synthetic-detection-v1"
+    assert main.DETECTION_EVAL_DATASETS["v2"][0] == "aegis-synthetic-detection-v2"
+    assert main.DETECTION_EVAL_DATASETS["v1"][1] is main.DETECTION_EVAL_DATASET_V1
+    assert main.DETECTION_EVAL_DATASETS["v2"][1] is main.DETECTION_EVAL_DATASET_V2

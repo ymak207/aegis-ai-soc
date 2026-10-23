@@ -565,7 +565,8 @@ def investigate(body: InvestigateIn):
 
 # Versioned, deterministic baseline benchmark. These are synthetic test cases, not a
 # substitute for a representative, labeled production dataset.
-DETECTION_EVAL_DATASET = [
+# v1 is frozen: do not edit its samples after results have been persisted.
+DETECTION_EVAL_DATASET_V1 = [
     {"type":"authentication_failure","message":"failed login","expected":True},
     {"type":"failed_login","message":"invalid password","expected":True},
     {"type":"suspicious_process","message":"unknown process launched","expected":True},
@@ -580,14 +581,30 @@ DETECTION_EVAL_DATASET = [
     {"type":"process_start","message":"credential dump detected in simulation","expected":True},
 ]
 
-@app.post("/api/v1/evaluations/run")
-def run_evaluation():
-    """Run a repeatable rule-baseline benchmark and persist its exact dataset version."""
+# v2 deliberately includes boundary cases. Its expected errors expose current heuristic
+# limitations; it is not a claim that these rules are production-ready.
+DETECTION_EVAL_DATASET_V2 = [
+    {"type":"authentication_failure","message":"invalid password","expected":True},
+    {"type":"suspicious_process","message":"unknown unsigned binary launched","expected":True},
+    {"type":"malware_detected","message":"synthetic malware signature hit","expected":True},
+    {"type":"privilege_escalation","message":"unexpected privilege change","expected":True},
+    {"type":"normal_activity","message":"scheduled backup completed successfully","expected":False},
+    {"type":"normal_activity","message":"routine health check completed","expected":False},
+    {"type":"normal_activity","message":"Security awareness report mentions mimikatz as an example","expected":False},
+    {"type":"process_start","message":"unusual credential extraction utility executed","expected":True},
+]
+DETECTION_EVAL_DATASETS = {
+    "v1": ("aegis-synthetic-detection-v1", DETECTION_EVAL_DATASET_V1),
+    "v2": ("aegis-synthetic-detection-v2", DETECTION_EVAL_DATASET_V2),
+}
+
+
+def score_detection_dataset(dataset: list[dict]) -> dict:
+    """Pure scoring function so benchmark logic can be tested without a database."""
     tp = fp = tn = fn = 0
     examples = []
-    for index, sample in enumerate(DETECTION_EVAL_DATASET):
-        event = {"event_type": sample["type"], "message": sample["message"]}
-        predicted = bool(rule_matches(event))
+    for index, sample in enumerate(dataset):
+        predicted = bool(rule_matches({"event_type": sample["type"], "message": sample["message"]}))
         expected = sample["expected"]
         if predicted and expected: tp += 1
         elif predicted and not expected: fp += 1
@@ -598,20 +615,27 @@ def run_evaluation():
     precision = tp / (tp + fp) if tp + fp else 0.0
     recall = tp / (tp + fn) if tp + fn else 0.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
-    result = {"dataset_version": "aegis-synthetic-detection-v1", "sample_count": len(examples),
-              "confusion_matrix": {"tp": tp, "fp": fp, "tn": tn, "fn": fn},
-              "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4),
-              "accuracy": round((tp + tn) / len(examples), 4),
-              "pass_count": sum(1 for item in examples if item["pass"]),
-              "examples": examples,
+    return {"sample_count": len(examples), "confusion_matrix": {"tp": tp, "fp": fp, "tn": tn, "fn": fn},
+            "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4),
+            "accuracy": round((tp + tn) / len(examples), 4) if examples else 0.0,
+            "pass_count": sum(1 for item in examples if item["pass"]), "examples": examples}
+
+
+@app.post("/api/v1/evaluations/run")
+def run_evaluation(version: str = Query(default="v1", pattern="^v[12]$")):
+    """Run and persist a named synthetic rule-baseline benchmark version."""
+    dataset_version, dataset = DETECTION_EVAL_DATASETS[version]
+    result = {"dataset_version": dataset_version, **score_detection_dataset(dataset),
               "limitations": ["Synthetic, hand-authored cases only", "Rule/heuristic baseline, not a trained ML model",
+                              "v2 intentionally includes boundary cases to expose known heuristic errors",
                               "Do not interpret these scores as production detection quality"]}
     run_id = str(uuid.uuid4())
     with connect() as conn:
         conn.execute("INSERT INTO evaluation_runs(id,suite,metrics) VALUES(%s,%s,%s)",
                      (run_id, "detection-baseline", Jsonb(result)))
         audit(conn, "evaluation.completed", "evaluation", run_id,
-              {"suite": "detection-baseline", "sample_count": len(examples), "f1": result["f1"]})
+              {"suite": "detection-baseline", "dataset_version": dataset_version,
+               "sample_count": result["sample_count"], "f1": result["f1"]})
     return {"id": run_id, "suite": "detection-baseline", **result}
 
 @app.get("/api/v1/evaluations/results")
