@@ -107,6 +107,74 @@ RULES = [
      "types": {"privilege_escalation"}, "description": "Privilege escalation signal requires investigation."},
 ]
 
+
+
+# Domain catalog is descriptive configuration, not a claim that domain-specific
+# detections are already implemented. It gives adapters and evaluation suites a
+# stable contract to grow against without changing the common event envelope.
+DOMAIN_CATALOG = {
+    "ecommerce": {
+        "label": "E-commerce & digital commerce",
+        "event_families": ["account_takeover", "payment_abuse", "promotion_abuse", "checkout_anomaly", "admin_access"],
+        "sources": ["web application", "identity provider", "payment gateway", "WAF/CDN", "order service"],
+        "evaluation_dimensions": ["precision", "recall", "false_positive_rate", "time_to_detect", "entity_resolution"],
+        "required_context": ["tenant_id", "user_id", "session_id", "order_id", "payment_reference"],
+    },
+    "telecom": {
+        "label": "Telecommunications",
+        "event_families": ["sim_swap", "subscriber_account_abuse", "signalling_anomaly", "cdr_anomaly", "privileged_network_change"],
+        "sources": ["AAA/RADIUS", "SIM provisioning", "network management", "CDR pipeline", "identity provider"],
+        "evaluation_dimensions": ["precision", "recall", "false_positive_rate", "time_to_detect", "sequence_detection"],
+        "required_context": ["subscriber_id", "sim_id", "device_id", "network_element", "session_id"],
+    },
+    "logistics": {
+        "label": "Logistics & supply chain",
+        "event_families": ["shipment_route_deviation", "warehouse_access_abuse", "fleet_device_compromise", "manifest_tampering", "partner_api_abuse"],
+        "sources": ["fleet telemetry", "warehouse management", "shipment tracking", "partner API gateway", "identity provider"],
+        "evaluation_dimensions": ["precision", "recall", "false_positive_rate", "time_to_detect", "entity_resolution"],
+        "required_context": ["shipment_id", "vehicle_id", "warehouse_id", "partner_id", "device_id"],
+    },
+    "cloud_saas": {
+        "label": "Cloud & SaaS",
+        "event_families": ["credential_abuse", "privilege_escalation", "public_resource_exposure", "control_plane_anomaly", "data_exfiltration"],
+        "sources": ["cloud audit logs", "IAM", "Kubernetes audit", "endpoint detection", "SaaS audit API"],
+        "evaluation_dimensions": ["precision", "recall", "false_positive_rate", "time_to_detect", "attack_technique_coverage"],
+        "required_context": ["tenant_id", "principal_id", "resource_id", "cloud_account", "region"],
+    },
+    "financial_services": {
+        "label": "Financial services",
+        "event_families": ["account_takeover", "transaction_abuse", "privileged_access_abuse", "api_abuse", "sensitive_data_access"],
+        "sources": ["identity provider", "transaction platform", "API gateway", "database audit", "endpoint detection"],
+        "evaluation_dimensions": ["precision", "recall", "false_positive_rate", "time_to_detect", "case_linkage"],
+        "required_context": ["customer_id_tokenized", "account_id_tokenized", "transaction_id", "session_id", "device_id"],
+    },
+}
+
+PLATFORM_CAPABILITY_CATALOG = [
+    {"id": "ingestion", "label": "Event ingestion and normalization", "status": "implemented",
+     "evaluation": ["schema_validity_pct", "duplicate_rate", "ingest_throughput_eps", "p95_ingest_latency_ms"]},
+    {"id": "rule_detection", "label": "Deterministic rule detection", "status": "implemented",
+     "evaluation": ["precision", "recall", "f1", "false_positive_rate", "rule_coverage_pct"]},
+    {"id": "streaming", "label": "Kafka streaming", "status": "optional_integration",
+     "evaluation": ["publish_success_pct", "consumer_lag", "retry_count", "dead_letter_count"]},
+    {"id": "vector_rag", "label": "Vector retrieval and RAG", "status": "implemented_with_local_services",
+     "evaluation": ["recall_at_k", "mrr", "citation_coverage_pct", "unsupported_claim_rate", "p95_retrieval_ms"]},
+    {"id": "local_llm", "label": "Local LLM investigation", "status": "implemented_with_local_model",
+     "evaluation": ["groundedness", "evidence_relevance", "p95_generation_ms", "refusal_correctness"]},
+    {"id": "agent_tracing", "label": "Agent run traces", "status": "implemented",
+     "evaluation": ["trace_completeness_pct", "failed_step_rate", "p95_run_duration_ms"]},
+    {"id": "mcp", "label": "MCP JSON-RPC tool interface", "status": "partial",
+     "evaluation": ["tool_schema_validity_pct", "authorization_denial_tests", "tool_error_rate"]},
+    {"id": "a2a_acp", "label": "A2A / ACP interoperability", "status": "planned",
+     "evaluation": ["agent_card_conformance_pct", "task_lifecycle_success_pct", "identity_propagation_pct"]},
+    {"id": "graph", "label": "Graph analytics", "status": "partial",
+     "evaluation": ["entity_resolution_precision", "relationship_precision", "query_p95_ms"]},
+    {"id": "ml_models", "label": "Trained ML model registry and serving", "status": "planned",
+     "evaluation": ["pr_auc", "calibration_error", "drift_score", "inference_p95_ms"]},
+    {"id": "devsecops", "label": "Build, test and supply-chain controls", "status": "partial",
+     "evaluation": ["test_pass_rate", "dependency_vulnerability_count", "image_scan_findings", "deployment_rollback_time"]},
+]
+
 class EventIn(BaseModel):
     event_time: datetime | None = None
     source: str = Field(default="manual", min_length=1, max_length=100)
@@ -321,6 +389,22 @@ def system_info():
             "capabilities": ["event-ingestion", "rule-based-detection", "alert-management", "case-management",
                              "threat-intelligence", "audit-trail", "knowledge-retrieval", "local-llm-investigation",
                              "mcp-json-rpc-tools", "integration-health-probes", "metrics", "baseline-evaluation", "agent-run-traces", "data-quality", "graph-lite"]}
+
+@app.get("/api/v1/platform/catalog")
+def platform_catalog():
+    """Return domain coverage contracts and honest implementation/evaluation status."""
+    return {
+        "catalog_version": "aegis-platform-catalog-v1",
+        "domains": [{"id": key, **value} for key, value in DOMAIN_CATALOG.items()],
+        "capabilities": PLATFORM_CAPABILITY_CATALOG,
+        "evaluation_principles": [
+            "Evaluate each domain against its own labeled dataset; do not transfer scores across domains.",
+            "Report false positives and false negatives alongside precision and recall.",
+            "Record dataset version, sample count, time window, and model/rule version for each run.",
+            "Planned or partial capabilities must not be presented as operational integrations.",
+        ],
+    }
+
 
 @app.get("/api/v1/overview")
 def overview():

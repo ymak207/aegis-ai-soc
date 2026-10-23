@@ -147,3 +147,34 @@ def test_detection_benchmark_versions_have_distinct_immutable_labels():
     assert main.DETECTION_EVAL_DATASETS["v2"][0] == "aegis-synthetic-detection-v2"
     assert main.DETECTION_EVAL_DATASETS["v1"][1] is main.DETECTION_EVAL_DATASET_V1
     assert main.DETECTION_EVAL_DATASETS["v2"][1] is main.DETECTION_EVAL_DATASET_V2
+
+
+def test_platform_catalog_covers_multiple_production_domains():
+    response = client.get("/api/v1/platform/catalog")
+    assert response.status_code == 200
+    body = response.json()
+    domain_ids = {item["id"] for item in body["domains"]}
+    assert {"ecommerce", "telecom", "logistics", "cloud_saas", "financial_services"} <= domain_ids
+    for domain in body["domains"]:
+        assert domain["event_families"]
+        assert domain["sources"]
+        assert domain["required_context"]
+        assert {"precision", "recall"} <= set(domain["evaluation_dimensions"])
+
+
+def test_platform_catalog_is_honest_about_unimplemented_capabilities():
+    response = client.get("/api/v1/platform/catalog")
+    assert response.status_code == 200
+    capabilities = {item["id"]: item for item in response.json()["capabilities"]}
+    assert capabilities["rule_detection"]["status"] == "implemented"
+    assert capabilities["a2a_acp"]["status"] == "planned"
+    assert capabilities["ml_models"]["status"] == "planned"
+    assert capabilities["mcp"]["status"] == "partial"
+    assert all(item["evaluation"] for item in capabilities.values())
+
+
+def test_platform_catalog_evaluation_principles_warn_against_cross_domain_scores():
+    body = client.get("/api/v1/platform/catalog").json()
+    principles = " ".join(body["evaluation_principles"]).lower()
+    assert "across domains" in principles
+    assert "false positives" in principles
