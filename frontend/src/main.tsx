@@ -8,6 +8,7 @@ type Overview = { events: number; alerts_open: number; alerts_critical: number; 
 type Indicator = { id: string; indicator_type: string; value: string; confidence: number; source: string; description: string };
 type DocumentItem = { id: string; title: string; source: string; content?: string; score?: number };
 type PlatformStatus = { api: string; version: string; readiness: Record<string, string>; metrics: Record<string, number | null>; capabilities: string[]; integrations: { name: string; state: string; detail: string }[] };
+type CorrelationLead = { id: string; rule_id: string; domain: string; title: string; severity: string; entity_type: string; entity_value: string; window_minutes: number; observed_interval_seconds: number; evidence_event_ids: string[]; event_types: string[]; explanation: string; limitations: string[] };
 type Page = "overview" | "detections" | "knowledge" | "platform";
 const API = "/api/v1";
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -43,6 +44,9 @@ function App() {
   const [dataQuality, setDataQuality] = React.useState<Record<string, unknown> | null>(null);
   const [graphSummary, setGraphSummary] = React.useState<Record<string, unknown> | null>(null);
   const [agentRuns, setAgentRuns] = React.useState<Array<Record<string, unknown>>>([]);
+  const [correlationLeads, setCorrelationLeads] = React.useState<CorrelationLead[]>([]);
+  const [correlationDomain, setCorrelationDomain] = React.useState("all");
+  const [correlationMode, setCorrelationMode] = React.useState("not loaded");
 
   const refresh = React.useCallback(async () => {
     try {
@@ -85,7 +89,18 @@ function App() {
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load platform status"); }
   }, []);
   React.useEffect(() => { void refresh(); const id = window.setInterval(() => void refresh(), 15000); return () => window.clearInterval(id); }, [refresh]);
+  const refreshCorrelations = React.useCallback(async () => {
+    try {
+      const suffix = correlationDomain === "all" ? "" : `?domain=${encodeURIComponent(correlationDomain)}`;
+      const result = await request<{items: CorrelationLead[]; mode: string}>(`${API}/correlations${suffix}`);
+      setCorrelationLeads(result.items);
+      setCorrelationMode(result.mode);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load correlation leads");
+    }
+  }, [correlationDomain]);
   React.useEffect(() => { if (page === "platform") void refreshPlatform(); }, [page, refreshPlatform]);
+  React.useEffect(() => { if (page === "detections") void refreshCorrelations(); }, [page, refreshCorrelations]);
 
   async function action(work: () => Promise<void>, success?: string) {
     setBusy(true); setMessage(""); setError("");
@@ -101,6 +116,16 @@ function App() {
   }
   async function simulateEvent() {
     await action(async () => { await request(`${API}/events`, { method: "POST", body: JSON.stringify({ source:"aegis-demo", event_type:eventType, severity:"high", username:"demo-admin", src_ip:"198.51.100.23", host:"demo-endpoint-01", message:eventMessage, raw:{simulation:true,dataset:"safe-synthetic"} }) }); }, "Synthetic event submitted. Refreshing detections.");
+  }
+  async function createCorrelationCase(lead: CorrelationLead) {
+    await action(async () => {
+      await request(`${API}/cases`, { method:"POST", body:JSON.stringify({
+        title: `Correlation review: ${lead.domain} / ${lead.rule_id}`,
+        severity: lead.severity,
+        description: `${lead.explanation} Entity: ${lead.entity_type}=${lead.entity_value}. Evidence event IDs: ${lead.evidence_event_ids.join(", ")}. Limitations: ${lead.limitations.join("; ")}. This is an investigation lead, not proof of compromise.`,
+        alert_ids: []
+      }) });
+    }, "Correlation review case created with evidence references.");
   }
   async function createCase(alert?: Alert) {
     await action(async () => { await request(`${API}/cases`, { method:"POST", body:JSON.stringify({ title:alert ? `Investigation: ${alert.title}` : "Analyst-created investigation", severity:alert?.severity || "medium", description:alert?.description || alert?.message || "Created from AEGIS console", alert_ids:alert ? [alert.id] : [] }) }); }, "Case created.");
@@ -139,6 +164,9 @@ function App() {
           <div className="two-col"><article className="surface pad"><p className="eyebrow">SAFE SIMULATION</p><h2>Generate a test event</h2><label>Event type<select value={eventType} onChange={e=>setEventType(e.target.value)}><option value="authentication_failure">Authentication failure</option><option value="suspicious_process">Suspicious process</option><option value="privilege_escalation">Privilege escalation</option><option value="normal_activity">Normal activity</option></select></label><label>Event message<input value={eventMessage} onChange={e=>setEventMessage(e.target.value)} maxLength={1000}/></label><button className="button primary" disabled={busy} onClick={()=>void simulateEvent()}>{busy?"Submitting…":"＋ Submit synthetic event"}</button><p className="hint">Uses reserved documentation IP 198.51.100.23. No external systems are contacted.</p></article>
           <article className="surface pad"><p className="eyebrow">AI-ASSISTED TRIAGE</p><h2>Investigation assistant</h2><label>Question<textarea value={question} onChange={e=>setQuestion(e.target.value)} rows={3}/></label><button className="button primary" disabled={busy} onClick={()=>void runInvestigation()}>{busy?"Investigating…":"✳ Investigate with evidence"}</button><p className="hint">Local Ollama is optional. Results are advisory and do not execute response actions.</p>{investigation&&<pre className="result">{JSON.stringify(investigation,null,2)}</pre>}</article></div>
           <div className="section-head"><div><p className="eyebrow">DETECTION QUEUE</p><h2>Open alerts <span className="count-badge">{alerts.length}</span></h2></div></div><div className="surface table-surface"><table><thead><tr><th>DETECTION</th><th>RULE</th><th>SEVERITY</th><th>SOURCE</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>{alerts.map(a=><tr key={a.id}><td><b>{a.title}</b><small>{a.description||a.message}</small></td><td><code>{a.rule_id||"—"}</code></td><td><span className={`severity ${a.severity}`}>{a.severity}</span></td><td>{a.src_ip||"—"}</td><td>{a.status}</td><td><button className="button tiny" disabled={busy} onClick={()=>void createCase(a)}>Create case</button></td></tr>)}{!alerts.length&&<tr><td colSpan={6} className="empty-state">No open alerts. Submit a synthetic event above.</td></tr>}</tbody></table></div>
+          <div className="section-head"><div><p className="eyebrow">MULTI-EVENT DETECTION</p><h2>Correlation leads <span className="count-badge">{correlationLeads.length}</span></h2></div><div className="top-actions"><select aria-label="Filter correlation leads by domain" value={correlationDomain} onChange={e=>setCorrelationDomain(e.target.value)}><option value="all">All domains</option><option value="ecommerce">E-commerce</option><option value="telecom">Telecom</option><option value="logistics">Logistics</option><option value="cloud_saas">Cloud / SaaS</option><option value="financial_services">Financial services</option></select><button className="button secondary" disabled={busy} onClick={()=>void refreshCorrelations()}>↻ Refresh leads</button></div></div>
+          <p className="hint">Mode: {correlationMode}. These deterministic sequences are analyst leads, not proof of malicious activity.</p>
+          <div className="surface table-surface"><table><thead><tr><th>DOMAIN / RULE</th><th>SEQUENCE</th><th>ENTITY</th><th>INTERVAL</th><th>EVIDENCE</th><th>ACTION</th></tr></thead><tbody>{correlationLeads.map(lead=><tr key={lead.id}><td><b>{lead.domain}</b><small><code>{lead.rule_id}</code></small></td><td><b>{lead.event_types.join(" → ")}</b><small>{lead.explanation}</small></td><td><code>{lead.entity_type}: {lead.entity_value}</code></td><td>{lead.observed_interval_seconds}s / {lead.window_minutes}m max</td><td>{lead.evidence_event_ids.map(id=><code key={id}>{id}</code>)}</td><td><button className="button tiny" disabled={busy} onClick={()=>void createCorrelationCase(lead)}>Create review case</button></td></tr>)}{!correlationLeads.length&&<tr><td colSpan={6} className="empty-state">No matching correlation leads. Ingest events with supported domain context and a matching ordered event sequence, then refresh.</td></tr>}</tbody></table></div>
           <div className="section-head"><div><p className="eyebrow">CASE MANAGEMENT</p><h2>Recent investigations</h2></div><button className="button secondary" disabled={busy} onClick={()=>void createCase()}>＋ New case</button></div><div className="surface case-table">{cases.map(c=><div className="case-row" key={c.id}><div className="case-icon">◇</div><div className="case-main"><b>{c.title}</b><small>{c.id}</small></div><span className={`severity ${c.severity}`}>{c.severity}</span><span className="pill">{c.status}</span></div>)}{!cases.length&&<p className="empty-state">No cases yet. Create one from an alert or start a new case.</p>}</div>
         </>}
         {page==="knowledge" && <><div className="page-title"><div><p className="eyebrow">CONTEXT ENGINEERING / KNOWLEDGE</p><h1>Intel & knowledge<span>.</span></h1><p className="lede">Manage local indicators and reference material for evidence-led triage.</p></div></div>
