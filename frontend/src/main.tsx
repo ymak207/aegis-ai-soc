@@ -65,7 +65,8 @@ function App() {
       setOverview(o); setAlerts(a.items); setCases(c.items); setIndicators(i.items);
       // Search endpoint returns only matching documents, so its count is not the document inventory.
       setDocuments(d.items); setStatus("Connected"); setError("");
-    } catch (e) { setStatus("Unavailable"); setError(e instanceof Error ? e.message : "API request failed"); }
+      return true;
+    } catch (e) { setStatus("Unavailable"); setError(e instanceof Error ? e.message : "API request failed"); return false; }
   }, []);
   const refreshPlatform = React.useCallback(async () => {
     try {
@@ -93,7 +94,8 @@ function App() {
           {name:"MCP JSON-RPC",state:"online",detail:`Read-only MCP-compatible initialize/tools/list/tools/call endpoint; ${tools.tools.length} legacy catalog entries`},
           {name:"ML model registry",state:"not_configured",detail:"No trained model or registry is configured; synthetic rule benchmark remains separate."},
         ] });
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not load platform status"); }
+      return true;
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not load platform status"); return false; }
   }, []);
   React.useEffect(() => { void refresh(); const id = window.setInterval(() => void refresh(), 15000); return () => window.clearInterval(id); }, [refresh]);
   const refreshCorrelations = React.useCallback(async () => {
@@ -102,8 +104,10 @@ function App() {
       const result = await request<{items: CorrelationLead[]; mode: string}>(`${API}/correlations${suffix}`);
       setCorrelationLeads(result.items);
       setCorrelationMode(result.mode);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load correlation leads");
+      return false;
     }
   }, [correlationDomain]);
   React.useEffect(() => { if (page === "platform") void refreshPlatform(); }, [page, refreshPlatform]);
@@ -113,10 +117,31 @@ function App() {
       setStudioCatalog(catalog);
       const evaluation = await request<DomainEvaluation>(`${API}/platform/domains/${encodeURIComponent(studioDomain)}/evaluation`);
       setDomainEvaluation(evaluation);
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not load domain studio"); }
+      return true;
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not load domain studio"); return false; }
   }, [studioDomain]);
   React.useEffect(() => { if (page === "domainStudio") void refreshStudio(); }, [page, refreshStudio]);
   React.useEffect(() => { if (page === "detections") void refreshCorrelations(); }, [page, refreshCorrelations]);
+
+  async function handleRefresh() {
+    if (busy) return;
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      const baseOk = await refresh();
+      if (!baseOk) return;
+      let pageOk = true;
+      if (page === "platform") pageOk = await refreshPlatform();
+      else if (page === "domainStudio") pageOk = await refreshStudio();
+      else if (page === "detections") pageOk = await refreshCorrelations();
+      if (pageOk) setMessage(`${nav.find(n => n.id === page)?.label || "Workspace"} refreshed successfully.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Refresh failed");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function action(work: () => Promise<void>, success?: string) {
     setBusy(true); setMessage(""); setError("");
@@ -191,7 +216,7 @@ function App() {
       <nav>{nav.map(n=><button key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}><span className="nav-glyph">{({overview:"◈",detections:"⌁",knowledge:"◎",domainStudio:"◇",platform:"▦"} as Record<string,string>)[n.id]}</span><span><b>{n.label}</b><small>{n.sub}</small></span>{page===n.id&&<i/>}</button>)}</nav>
       <div className="sidebar-bottom"><div className={`health-chip ${status==="Connected"?"ok":"bad"}`}><i/>{status==="Connected"?"API CONNECTED":"API UNAVAILABLE"}</div><small>Defensive use only · analyst reviewed</small><small>Build 0.2.0 · self-hosted</small></div>
     </aside>
-    <section className="main-area"><header className="topbar"><div><span className="breadcrumb">AEGIS / </span><strong>{nav.find(n=>n.id===page)?.label}</strong></div><div className="top-actions"><span className="live-indicator"><i/> LIVE · 15S REFRESH</span><button className="button secondary" onClick={()=>{void refresh();if(page==="platform")void refreshPlatform();else if(page==="domainStudio")void refreshStudio();else if(page==="detections")void refreshCorrelations();}}>↻ Refresh</button></div></header>
+    <section className="main-area"><header className="topbar"><div><span className="breadcrumb">AEGIS / </span><strong>{nav.find(n=>n.id===page)?.label}</strong></div><div className="top-actions"><span className="live-indicator"><i/> LIVE · 15S REFRESH</span><button className="button secondary" disabled={busy} onClick={()=>void handleRefresh()}>{busy?"Refreshing…":"↻ Refresh"}</button></div></header>
       <section className="page-content">
         {error && <div className="notice-panel" role="alert"><b>Request failed</b><p>{error}</p></div>}
         {message && <div className="notice-panel" role="status"><p>{message}</p></div>}
