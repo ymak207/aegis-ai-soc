@@ -768,6 +768,32 @@ def score_domain_dataset(domain: str, dataset: list[dict]) -> dict:
                             "Rules require domain-specific labeled datasets before operational use"]}
 
 
+@app.get("/api/v1/platform/studio")
+def platform_studio():
+    """Admin-oriented domain studio manifest; exposes configured coverage without claiming integrations are live."""
+    return {
+        "catalog_version": "aegis-platform-catalog-v1",
+        "mode": "admin-domain-studio",
+        "domains": [
+            {
+                "id": key,
+                **value,
+                "configuration_status": "catalog_defined",
+                "configuration_note": "This profile describes expected sources and context; it does not configure a live connector.",
+                "evaluation_endpoint": f"/api/v1/platform/domains/{key}/evaluation",
+                "run_endpoint": f"/api/v1/platform/domains/{key}/evaluation",
+            }
+            for key, value in DOMAIN_CATALOG.items()
+        ],
+        "capabilities": PLATFORM_CAPABILITY_CATALOG,
+        "next_configuration_steps": [
+            "Connect and validate a source adapter before treating its telemetry as live.",
+            "Map source fields to the common event schema and domain context fields.",
+            "Run the domain smoke evaluation, then add representative labeled data before operational use.",
+        ],
+    }
+
+
 @app.get("/api/v1/platform/domains/{domain}/evaluation")
 def get_domain_evaluation(domain: str):
     if domain not in DOMAIN_EVAL_DATASETS:

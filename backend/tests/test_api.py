@@ -330,3 +330,25 @@ class FakeAuditConnection:
     def __enter__(self): return self
     def __exit__(self, *args): return False
     def execute(self, *args, **kwargs): return self
+
+
+
+def test_platform_studio_returns_domain_profiles_and_honest_configuration_status():
+    response = client.get("/api/v1/platform/studio")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["mode"] == "admin-domain-studio"
+    assert {item["id"] for item in body["domains"]} == {
+        "ecommerce", "telecom", "logistics", "cloud_saas", "financial_services"
+    }
+    assert all(item["configuration_status"] == "catalog_defined" for item in body["domains"])
+    assert all("does not configure a live connector" in item["configuration_note"] for item in body["domains"])
+
+
+def test_platform_studio_exposes_capability_status_and_setup_guidance():
+    body = client.get("/api/v1/platform/studio").json()
+    capabilities = {item["id"]: item["status"] for item in body["capabilities"]}
+    assert capabilities["rule_detection"] == "implemented"
+    assert capabilities["a2a_acp"] == "planned"
+    assert capabilities["ml_models"] == "planned"
+    assert len(body["next_configuration_steps"]) >= 3

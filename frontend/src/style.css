@@ -2,3 +2,13 @@
 @media(max-width:1100px){.app-shell{grid-template-columns:205px minmax(0,1fr)}.integration-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.pipeline{gap:6px}.pipeline>i{display:none}}
 @media(max-width:760px){.app-shell{display:block}.sidebar{position:relative;width:100%;height:auto;padding:12px 14px;border-right:0;border-bottom:1px solid #202c3d}.brand{padding:0 5px 12px}.workspace-label,.sidebar-bottom{display:none}.sidebar nav{display:flex;overflow-x:auto;padding-top:10px}.nav-item{flex:0 0 auto;padding:9px}.nav-item small{display:none}.nav-glyph{width:auto}.nav-item b{font-size:9px}.topbar{height:55px;padding:0 16px}.live-indicator{display:none}.page-content{padding:22px 15px}.page-title{display:block}.posture-card{margin-top:18px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bottom-grid,.two-col,.doc-results{grid-template-columns:1fr}.platform-banner{grid-template-columns:1fr}.integration-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.eval-row{grid-template-columns:1fr;gap:7px}.eval-header{display:none}.app-footer{padding:17px 15px;display:grid}.section-head{align-items:start}.section-head .button{max-width:48%}}
 @media(max-width:430px){.metric-grid,.integration-grid,.metric-grid.compact{grid-template-columns:1fr}.metric-card{min-height:105px}.top-actions{gap:5px}.case-row{flex-wrap:wrap}.search-bar{flex-wrap:wrap}.search-bar input{flex-basis:100%}}
+
+
+/* Admin Domain Studio */
+.studio-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
+.studio-grid > * { min-width:0; }
+.tag-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.tag-list .pill { display:inline-flex; align-items:center; padding:6px 9px; border:1px solid var(--border, #26374b); border-radius:999px; color:var(--muted, #9fb1c8); font-size:11px; }
+.studio-grid ul, .notice-panel ul { padding-left:18px; color:var(--muted, #9fb1c8); line-height:1.8; }
+#studio-domain { display:block; width:min(100%,460px); margin-top:8px; }
+@media (max-width: 800px) { .studio-grid { grid-template-columns:1fr; } }

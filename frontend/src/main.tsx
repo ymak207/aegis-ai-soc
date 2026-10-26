@@ -9,7 +9,10 @@ type Indicator = { id: string; indicator_type: string; value: string; confidence
 type DocumentItem = { id: string; title: string; source: string; content?: string; score?: number };
 type PlatformStatus = { api: string; version: string; readiness: Record<string, string>; metrics: Record<string, number | null>; capabilities: string[]; integrations: { name: string; state: string; detail: string }[] };
 type CorrelationLead = { id: string; rule_id: string; domain: string; title: string; severity: string; entity_type: string; entity_value: string; window_minutes: number; observed_interval_seconds: number; evidence_event_ids: string[]; event_types: string[]; explanation: string; limitations: string[] };
-type Page = "overview" | "detections" | "knowledge" | "platform";
+type StudioDomain = { id: string; label: string; event_families: string[]; sources: string[]; required_context: string[]; evaluation_dimensions: string[]; configuration_status: string; configuration_note: string; evaluation_endpoint: string; run_endpoint: string };
+type StudioCatalog = { catalog_version: string; mode: string; domains: StudioDomain[]; capabilities: Array<{id:string;label:string;status:string;evaluation:string[]}>; next_configuration_steps: string[] };
+type DomainEvaluation = { id?: string; domain: string; dataset_version: string; evaluation_type: string; sample_count: number; confusion_matrix: {tp:number;fp:number;tn:number;fn:number}; precision:number; recall:number; f1:number; accuracy:number; pass_count:number; limitations:string[] };
+type Page = "overview" | "detections" | "knowledge" | "domainStudio" | "platform";
 const API = "/api/v1";
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers || {}) } });
@@ -47,6 +50,10 @@ function App() {
   const [correlationLeads, setCorrelationLeads] = React.useState<CorrelationLead[]>([]);
   const [correlationDomain, setCorrelationDomain] = React.useState("all");
   const [correlationMode, setCorrelationMode] = React.useState("not loaded");
+  const [studioCatalog, setStudioCatalog] = React.useState<StudioCatalog | null>(null);
+  const [studioDomain, setStudioDomain] = React.useState("ecommerce");
+  const [domainEvaluation, setDomainEvaluation] = React.useState<DomainEvaluation | null>(null);
+  const [domainEvalHistory, setDomainEvalHistory] = React.useState<DomainEvaluation | null>(null);
 
   const refresh = React.useCallback(async () => {
     try {
@@ -100,6 +107,15 @@ function App() {
     }
   }, [correlationDomain]);
   React.useEffect(() => { if (page === "platform") void refreshPlatform(); }, [page, refreshPlatform]);
+  const refreshStudio = React.useCallback(async () => {
+    try {
+      const catalog = await request<StudioCatalog>(`${API}/platform/studio`);
+      setStudioCatalog(catalog);
+      const evaluation = await request<DomainEvaluation>(`${API}/platform/domains/${encodeURIComponent(studioDomain)}/evaluation`);
+      setDomainEvaluation(evaluation);
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not load domain studio"); }
+  }, [studioDomain]);
+  React.useEffect(() => { if (page === "domainStudio") void refreshStudio(); }, [page, refreshStudio]);
   React.useEffect(() => { if (page === "detections") void refreshCorrelations(); }, [page, refreshCorrelations]);
 
   async function action(work: () => Promise<void>, success?: string) {
@@ -107,6 +123,13 @@ function App() {
     try { await work(); if (success) setMessage(success); await refresh(); if (page === "platform") await refreshPlatform(); }
     catch (e) { setError(e instanceof Error ? e.message : "Request failed"); }
     finally { setBusy(false); }
+  }
+  async function runDomainEvaluation() {
+    await action(async () => {
+      const result = await request<DomainEvaluation>(`${API}/platform/domains/${encodeURIComponent(studioDomain)}/evaluation`, {method:"POST"});
+      setDomainEvaluation(result);
+      setDomainEvalHistory(result);
+    }, `Saved ${studioDomain} domain smoke evaluation. Results are synthetic and not production validation.`);
   }
   async function runEvaluation() {
     await action(async () => {
@@ -158,12 +181,12 @@ function App() {
 
   const nav: {id:Page; label:string; sub:string}[] = [
     {id:"overview",label:"Command center",sub:"Live operations"}, {id:"detections",label:"Detection & response",sub:"Events · alerts · cases"},
-    {id:"knowledge",label:"Intel & knowledge",sub:"Indicators · retrieval"}, {id:"platform",label:"Stack & evaluation",sub:"Health · quality · capacity"}
+    {id:"knowledge",label:"Intel & knowledge",sub:"Indicators · retrieval"}, {id:"domainStudio",label:"Domain studio",sub:"Profiles · rules · evaluation"}, {id:"platform",label:"Stack & evaluation",sub:"Health · quality · capacity"}
   ];
   return <main className="app-shell">
     <aside className="sidebar"><div className="brand"><div className="brand-mark">A</div><div><strong>AEGIS</strong><span>AI SECURITY OPERATIONS</span></div></div>
       <div className="workspace-label">WORKSPACE <span>LOCAL POC</span></div>
-      <nav>{nav.map(n=><button key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}><span className="nav-glyph">{({overview:"◈",detections:"⌁",knowledge:"◎",platform:"▦"} as Record<string,string>)[n.id]}</span><span><b>{n.label}</b><small>{n.sub}</small></span>{page===n.id&&<i/>}</button>)}</nav>
+      <nav>{nav.map(n=><button key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}><span className="nav-glyph">{({overview:"◈",detections:"⌁",knowledge:"◎",domainStudio:"◇",platform:"▦"} as Record<string,string>)[n.id]}</span><span><b>{n.label}</b><small>{n.sub}</small></span>{page===n.id&&<i/>}</button>)}</nav>
       <div className="sidebar-bottom"><div className={`health-chip ${status==="Connected"?"ok":"bad"}`}><i/>{status==="Connected"?"API CONNECTED":"API UNAVAILABLE"}</div><small>Defensive use only · analyst reviewed</small><small>Build 0.2.0 · self-hosted</small></div>
     </aside>
     <section className="main-area"><header className="topbar"><div><span className="breadcrumb">AEGIS / </span><strong>{nav.find(n=>n.id===page)?.label}</strong></div><div className="top-actions"><span className="live-indicator"><i/> LIVE · 15S REFRESH</span><button className="button secondary" onClick={()=>{void refresh();if(page==="platform")void refreshPlatform();}}>↻ Refresh</button></div></header>
@@ -189,6 +212,33 @@ function App() {
           <article className="surface pad"><p className="eyebrow">LOCAL KNOWLEDGE BASE</p><h2>Add a reference document</h2><form onSubmit={e=>{e.preventDefault();void addDocument(e);}}><label>Title<input required value={docTitle} onChange={e=>setDocTitle(e.target.value)} maxLength={250}/></label><label>Content <textarea required minLength={20} value={docContent} onChange={e=>setDocContent(e.target.value)} rows={4} maxLength={100000} placeholder="Paste defensive runbook or incident-handling notes…"/></label><button className="button primary" disabled={busy||docContent.trim().length<20}>＋ Save document</button></form><p className="hint">Stored in PostgreSQL first. When the AI profile is running with the configured Ollama embedding model and Qdrant, documents are also indexed for vector retrieval; otherwise the API keeps the document and falls back to keywords.</p></article></div>
           <div className="section-head"><div><p className="eyebrow">INDICATOR INVENTORY</p><h2>Stored indicators <span className="count-badge">{indicators.length}</span></h2></div></div><div className="surface table-surface"><table><thead><tr><th>TYPE</th><th>VALUE</th><th>CONFIDENCE</th><th>SOURCE</th><th>DESCRIPTION</th></tr></thead><tbody>{indicators.map(i=><tr key={i.id}><td>{i.indicator_type}</td><td><code>{i.value}</code></td><td><div className="confidence"><i style={{width:`${i.confidence}%`}}/>{i.confidence}%</div></td><td>{i.source}</td><td>{i.description||"—"}</td></tr>)}{!indicators.length&&<tr><td colSpan={5} className="empty-state">No indicators stored.</td></tr>}</tbody></table></div>
           <div className="section-head"><div><p className="eyebrow">RETRIEVAL</p><h2>Search knowledge documents</h2></div><button className="button secondary" disabled={busy} onClick={()=>void action(async()=>{const r=await request<{total:number;indexed:number;failed:number;mode:string}>(`${API}/knowledge/reindex`,{method:"POST"});setMessage(`Reindex: ${r.indexed}/${r.total} documents indexed; ${r.failed} failed (${r.mode}).`);},undefined)}>↻ Reindex vector store</button></div><form className="search-bar" onSubmit={e=>void searchKnowledge(e)}><input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} minLength={2} placeholder="Search runbooks, indicators, procedures…"/><button className="button primary" disabled={busy}>Search</button></form><div className="doc-results">{searchResults.map(d=><article className="surface pad" key={d.id}><div className="doc-head"><h3>{d.title}</h3><span className="pill">score {d.score}</span></div><p>{d.content}</p><small>{d.source}</small></article>)}{!searchResults.length&&<p className="muted">Run a search to see matching documents. The API reports whether results came from Qdrant vectors or keyword fallback.</p>}</div>
+        </>}
+        {page==="domainStudio" && <>
+          <div className="page-title"><div><p className="eyebrow">ADMIN CONTROL PLANE / DOMAIN STUDIO</p><h1>Configure the signal<span>.</span></h1><p className="lede">Inspect industry profiles, required telemetry context, evaluation dimensions and capability readiness from one admin workspace.</p></div><button className="button secondary" disabled={busy} onClick={()=>void refreshStudio()}>↻ Refresh studio</button></div>
+          <div className="surface pad">
+            <div className="section-head"><div><p className="eyebrow">INDUSTRY PROFILE</p><h2>Domain configuration</h2></div><span className="integration-state partial">{studioCatalog?.catalog_version||"Loading catalog"}</span></div>
+            <label htmlFor="studio-domain">Active domain profile</label>
+            <select id="studio-domain" value={studioDomain} onChange={e=>{setStudioDomain(e.target.value);setDomainEvaluation(null);setDomainEvalHistory(null);}}>
+              {(studioCatalog?.domains||[]).map(d=><option key={d.id} value={d.id}>{d.label}</option>)}
+            </select>
+            {(() => { const d=studioCatalog?.domains.find(x=>x.id===studioDomain); return d ? <div className="studio-grid">
+              <article className="metric-card"><span className="metric-top">PROFILE STATUS</span><strong>{d.configuration_status.replace(/_/g," ").toUpperCase()}</strong><small>{d.configuration_note}</small></article>
+              <article className="surface pad"><p className="eyebrow">EXPECTED EVENT FAMILIES</p><div className="tag-list">{d.event_families.map(x=><span className="pill" key={x}>{x.replace(/_/g," ")}</span>)}</div></article>
+              <article className="surface pad"><p className="eyebrow">SOURCE SYSTEMS</p><ul>{d.sources.map(x=><li key={x}>{x}</li>)}</ul></article>
+              <article className="surface pad"><p className="eyebrow">REQUIRED CONTEXT</p><div className="tag-list">{d.required_context.map(x=><span className="pill" key={x}>{x}</span>)}</div></article>
+              <article className="surface pad"><p className="eyebrow">EVALUATION DIMENSIONS</p><div className="tag-list">{d.evaluation_dimensions.map(x=><span className="pill" key={x}>{x.replace(/_/g," ")}</span>)}</div></article>
+            </div> : <p className="muted">Loading domain profile…</p>; })()}
+          </div>
+          <div className="section-head"><div><p className="eyebrow">RULE QUALITY / BASELINE</p><h2>Domain smoke evaluation</h2></div><button className="button primary" disabled={busy||!studioCatalog} onClick={()=>void runDomainEvaluation()}>{busy?"Running…":"▶ Run & persist evaluation"}</button></div>
+          <div className="metric-grid compact">{([["Precision",domainEvaluation?.precision],["Recall",domainEvaluation?.recall],["F1 score",domainEvaluation?.f1],["Accuracy",domainEvaluation?.accuracy]] as Array<[string,number|undefined]>).map(([label,value])=><article className="metric-card" key={label}><span className="metric-top">{label}</span><strong>{value==null?"—":`${(value*100).toFixed(1)}%`}</strong><small>Current synthetic smoke dataset</small></article>)}</div>
+          <div className="surface pad"><div className="section-head"><div><p className="eyebrow">CONFUSION MATRIX</p><h2>{domainEvaluation?.dataset_version||"Evaluation not loaded"}</h2></div><span className="pill">{domainEvaluation?.sample_count??0} samples</span></div>
+            <div className="metric-grid compact">{([["True positives",domainEvaluation?.confusion_matrix.tp],["False positives",domainEvaluation?.confusion_matrix.fp],["True negatives",domainEvaluation?.confusion_matrix.tn],["False negatives",domainEvaluation?.confusion_matrix.fn]] as Array<[string,number|undefined]>).map(([label,value])=><article className="metric-card" key={label}><span className="metric-top">{label}</span><strong>{value??"—"}</strong></article>)}</div>
+            <p className="muted">{domainEvaluation?.limitations.join(" · ")||"Loading evaluation limitations."}</p>
+            {domainEvalHistory&&<p className="text-green">Persisted evaluation run {domainEvalHistory.id||"saved"} for {domainEvalHistory.domain}.</p>}
+          </div>
+          <div className="section-head"><div><p className="eyebrow">CAPABILITY READINESS</p><h2>Shared platform capabilities</h2></div></div>
+          <div className="integration-grid">{(studioCatalog?.capabilities||[]).map(c=><article className="surface integration-card" key={c.id}><div className="integration-head"><b>{c.label}</b><span className={`integration-state ${c.status==="implemented"||c.status==="implemented_with_local_services"||c.status==="implemented_with_local_model"?"online":"partial"}`}>{c.status.replace(/_/g," ")}</span></div><p>Evaluation: {c.evaluation.join(", ")}</p></article>)}</div>
+          <div className="notice-panel"><b>Admin setup checklist</b><ul>{(studioCatalog?.next_configuration_steps||[]).map(x=><li key={x}>{x}</li>)}</ul><p>Domain profiles describe expected telemetry and evaluation scope. They do not mean the listed source systems are connected or that the smoke dataset validates production detection quality.</p></div>
         </>}
         {page==="platform" && <><div className="page-title"><div><p className="eyebrow">PLATFORM ENGINEERING / OBSERVABILITY</p><h1>Stack & evaluation<span>.</span></h1><p className="lede">Operational checks, runtime counters and an honest readiness view of AI/data integrations.</p></div><button className="button secondary" onClick={()=>void refreshPlatform()}>↻ Refresh diagnostics</button></div>
           <div className="platform-banner"><div><span>CORE PLATFORM</span><strong className={platform?.api==="ready"?"text-green":"text-amber"}>{platform?.api?.toUpperCase()||"CHECKING"}</strong><small>API v{platform?.version||"—"} · PostgreSQL and Redis readiness</small></div><div><span>DATA PERSISTENCE</span><strong>{platform?.readiness.postgres==="ok"?"HEALTHY":"CHECK"}</strong><small>PostgreSQL-backed operational records</small></div><div><span>OBSERVABILITY</span><strong>BASELINE</strong><small>Prometheus-format counters at /metrics</small></div></div>
