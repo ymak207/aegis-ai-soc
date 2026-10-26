@@ -4,7 +4,7 @@ import os
 import re
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import psycopg
@@ -907,6 +907,47 @@ def correlate_events(events: list[dict]) -> list[dict]:
             "limitations": ["Deterministic correlation heuristic", "Shared entity and event order do not prove causality or compromise"]
         })
     return sorted(leads, key=lambda item: (item["domain"], item["observed_interval_seconds"]))
+
+
+@app.post("/api/v1/correlations/simulate")
+def simulate_correlation_scenario(domain: str = Query(...)):
+    """Ingest a clearly labelled synthetic event pair for safely demonstrating one domain rule."""
+    if domain not in CORRELATION_RULES:
+        raise HTTPException(400, "Unsupported domain; choose a domain from /api/v1/platform/catalog")
+    rule = CORRELATION_RULES[domain]
+    scenario_id = str(uuid.uuid4())
+    entity_value = f"aegis-sim-{scenario_id[:8]}"
+    now = datetime.now(timezone.utc)
+    entity_field = rule["entity"]
+    shared = {entity_field: entity_value}
+    first = EventIn(
+        event_time=now.replace(microsecond=0) - timedelta(seconds=90),
+        source="aegis-safe-simulation", event_type=rule["first"], domain=domain,
+        severity="medium", username=entity_value if entity_field == "username" else None,
+        host=entity_value if entity_field == "host" else "aegis-simulation-host",
+        message=f"Synthetic simulation event 1 of 2 for {domain}; no external system contacted",
+        raw={"simulation": True, "scenario_id": scenario_id, "dataset": "safe-synthetic", **shared},
+    )
+    second = EventIn(
+        event_time=now.replace(microsecond=0) - timedelta(seconds=30),
+        source="aegis-safe-simulation", event_type=rule["second"], domain=domain,
+        severity="high", username=entity_value if entity_field == "username" else None,
+        host=entity_value if entity_field == "host" else "aegis-simulation-host",
+        message=f"Synthetic simulation event 2 of 2 for {domain}; intended correlation trigger",
+        raw={"simulation": True, "scenario_id": scenario_id, "dataset": "safe-synthetic", **shared},
+    )
+    ingestion = ingest_batch(EventBatch(events=[first, second]))
+    result = list_correlations(limit=2000, domain=domain)
+    lead = next((item for item in result["items"] if item.get("entity_value") == entity_value), None)
+    if lead is None:
+        raise HTTPException(500, "Synthetic events were ingested but the expected correlation lead was not produced")
+    audit_details = {"domain": domain, "scenario_id": scenario_id, "event_ids": [item.get("event_id") for item in ingestion.get("items", [])], "rule_id": rule["id"]}
+    with connect() as conn:
+        audit(conn, "correlation.simulation.completed", "correlation_scenario", scenario_id, audit_details)
+    return {"scenario_id": scenario_id, "domain": domain, "synthetic": True,
+            "events_ingested": ingestion.get("accepted", len(ingestion.get("items", []))),
+            "event_results": ingestion.get("items", []), "lead": lead,
+            "note": "Synthetic training data only. No external systems contacted; lead is not proof of compromise."}
 
 
 @app.get("/api/v1/correlations")

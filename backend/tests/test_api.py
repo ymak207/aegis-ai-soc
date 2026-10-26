@@ -293,3 +293,40 @@ def test_correlation_respects_time_window_and_event_order():
 def test_correlations_endpoint_rejects_unknown_domain_without_database_access():
     response = client.get("/api/v1/correlations?domain=unknown")
     assert response.status_code == 400
+
+
+def test_correlation_simulation_rejects_unknown_domain():
+    response = client.post("/api/v1/correlations/simulate?domain=unknown")
+    assert response.status_code == 400
+
+
+def test_correlation_simulation_ingests_ordered_synthetic_pair_and_returns_lead(monkeypatch):
+    import app.main as main
+
+    captured = {}
+    def fake_ingest(batch):
+        captured["events"] = batch.events
+        return {"accepted": 2, "items": [{"event_id": "event-1"}, {"event_id": "event-2"}]}
+    def fake_correlations(limit=500, domain=None):
+        events = captured["events"]
+        entity = events[0].username or events[0].host
+        return {"items": [{"id": "lead-1", "domain": domain, "entity_value": entity,
+                           "evidence_event_ids": ["event-1", "event-2"], "rule_id": "CORR-TEL-001"}]}
+    monkeypatch.setattr(main, "ingest_batch", fake_ingest)
+    monkeypatch.setattr(main, "list_correlations", fake_correlations)
+    monkeypatch.setattr(main, "connect", lambda: FakeAuditConnection())
+
+    response = client.post("/api/v1/correlations/simulate?domain=telecom")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["synthetic"] is True
+    assert body["events_ingested"] == 2
+    assert body["lead"]["evidence_event_ids"] == ["event-1", "event-2"]
+    assert [event.event_type for event in captured["events"]] == ["sim_swap", "subscriber_account_abuse"]
+    assert all(event.raw["simulation"] is True for event in captured["events"])
+
+
+class FakeAuditConnection:
+    def __enter__(self): return self
+    def __exit__(self, *args): return False
+    def execute(self, *args, **kwargs): return self
