@@ -20,6 +20,7 @@ dist/
 build/
 .angular/
 coverage/
+tsconfig.tsbuildinfo
 
 # IDE / OS
 .vscode/
