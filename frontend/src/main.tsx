@@ -183,6 +183,8 @@ function App() {
     {id:"overview",label:"Command center",sub:"Live operations"}, {id:"detections",label:"Detection & response",sub:"Events · alerts · cases"},
     {id:"knowledge",label:"Intel & knowledge",sub:"Indicators · retrieval"}, {id:"domainStudio",label:"Domain studio",sub:"Profiles · rules · evaluation"}, {id:"platform",label:"Stack & evaluation",sub:"Health · quality · capacity"}
   ];
+  const studioDomainProfile = studioCatalog?.domains.find(x => x.id === studioDomain);
+
   return <main className="app-shell">
     <aside className="sidebar"><div className="brand"><div className="brand-mark">A</div><div><strong>AEGIS</strong><span>AI SECURITY OPERATIONS</span></div></div>
       <div className="workspace-label">WORKSPACE <span>LOCAL POC</span></div>
@@ -221,13 +223,15 @@ function App() {
             <select id="studio-domain" value={studioDomain} onChange={e=>{setStudioDomain(e.target.value);setDomainEvaluation(null);setDomainEvalHistory(null);}}>
               {(studioCatalog?.domains||[]).map(d=><option key={d.id} value={d.id}>{d.label}</option>)}
             </select>
-            {(() => { const d=studioCatalog?.domains.find(x=>x.id===studioDomain); return d ? <div className="studio-grid">
-              <article className="metric-card"><span className="metric-top">PROFILE STATUS</span><strong>{d.configuration_status.replace(/_/g," ").toUpperCase()}</strong><small>{d.configuration_note}</small></article>
-              <article className="surface pad"><p className="eyebrow">EXPECTED EVENT FAMILIES</p><div className="tag-list">{d.event_families.map(x=><span className="pill" key={x}>{x.replace(/_/g," ")}</span>)}</div></article>
-              <article className="surface pad"><p className="eyebrow">SOURCE SYSTEMS</p><ul>{d.sources.map(x=><li key={x}>{x}</li>)}</ul></article>
-              <article className="surface pad"><p className="eyebrow">REQUIRED CONTEXT</p><div className="tag-list">{d.required_context.map(x=><span className="pill" key={x}>{x}</span>)}</div></article>
-              <article className="surface pad"><p className="eyebrow">EVALUATION DIMENSIONS</p><div className="tag-list">{d.evaluation_dimensions.map(x=><span className="pill" key={x}>{x.replace(/_/g," ")}</span>)}</div></article>
-            </div> : <p className="muted">Loading domain profile…</p>; })()}
+            {studioDomainProfile ? (
+              <div className="studio-grid">
+                <article className="metric-card"><span className="metric-top">PROFILE STATUS</span><strong>{studioDomainProfile.configuration_status.replace(/_/g," ").toUpperCase()}</strong><small>{studioDomainProfile.configuration_note}</small></article>
+                <article className="surface pad"><p className="eyebrow">EXPECTED EVENT FAMILIES</p><div className="tag-list">{studioDomainProfile.event_families.map(x => <span className="pill" key={x}>{x.replace(/_/g," ")}</span>)}</div></article>
+                <article className="surface pad"><p className="eyebrow">SOURCE SYSTEMS</p><ul>{studioDomainProfile.sources.map(x => <li key={x}>{x}</li>)}</ul></article>
+                <article className="surface pad"><p className="eyebrow">REQUIRED CONTEXT</p><div className="tag-list">{studioDomainProfile.required_context.map(x => <span className="pill" key={x}>{x}</span>)}</div></article>
+                <article className="surface pad"><p className="eyebrow">EVALUATION DIMENSIONS</p><div className="tag-list">{studioDomainProfile.evaluation_dimensions.map(x => <span className="pill" key={x}>{x.replace(/_/g," ")}</span>)}</div></article>
+              </div>
+            ) : <p className="muted">Loading domain profile…</p>}
           </div>
           <div className="section-head"><div><p className="eyebrow">RULE QUALITY / BASELINE</p><h2>Domain smoke evaluation</h2></div><button className="button primary" disabled={busy||!studioCatalog} onClick={()=>void runDomainEvaluation()}>{busy?"Running…":"▶ Run & persist evaluation"}</button></div>
           <div className="metric-grid compact">{([["Precision",domainEvaluation?.precision],["Recall",domainEvaluation?.recall],["F1 score",domainEvaluation?.f1],["Accuracy",domainEvaluation?.accuracy]] as Array<[string,number|undefined]>).map(([label,value])=><article className="metric-card" key={label}><span className="metric-top">{label}</span><strong>{value==null?"—":`${(value*100).toFixed(1)}%`}</strong><small>Current synthetic smoke dataset</small></article>)}</div>
