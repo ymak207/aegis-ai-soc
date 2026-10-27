@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(
     title="AEGIS AI SOC API",
-    version="0.2.0",
+    version="0.2.1",
     description="Self-hosted security event, detection, case and AI-assisted investigation platform.",
 )
 app.add_middleware(
@@ -27,6 +27,36 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+# AEGIS API is intended to sit behind a private network/reverse proxy. These
+# response headers provide defense-in-depth; they do not replace authentication,
+# TLS, or a properly configured ingress.
+MAX_REQUEST_BYTES = int(os.getenv("MAX_REQUEST_BYTES", str(10 * 1024 * 1024)))
+
+@app.middleware("http")
+async def security_and_request_size_middleware(request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_REQUEST_BYTES:
+                from fastapi.responses import JSONResponse
+                response = JSONResponse(
+                    status_code=413,
+                    content={"detail": f"Request body exceeds configured limit of {MAX_REQUEST_BYTES} bytes"},
+                )
+            else:
+                response = await call_next(request)
+        except ValueError:
+            from fastapi.responses import JSONResponse
+            response = JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
+    else:
+        response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    response.headers.setdefault("Cache-Control", "no-store")
+    return response
 DB_HOST = os.getenv("DB_HOST", "postgres")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_NAME = os.getenv("DB_NAME", "aegis")

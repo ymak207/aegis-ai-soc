@@ -352,3 +352,24 @@ def test_platform_studio_exposes_capability_status_and_setup_guidance():
     assert capabilities["a2a_acp"] == "planned"
     assert capabilities["ml_models"] == "planned"
     assert len(body["next_configuration_steps"]) >= 3
+
+
+def test_security_headers_are_present_on_api_responses():
+    response = client.get("/health/live")
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_oversized_content_length_is_rejected_before_route_execution(monkeypatch):
+    import app.main as main
+    monkeypatch.setattr(main, "MAX_REQUEST_BYTES", 32)
+    response = client.post(
+        "/api/v1/events",
+        headers={"Content-Length": "33", "Content-Type": "application/json"},
+        content=b"{}",
+    )
+    assert response.status_code == 413
+    assert "exceeds configured limit" in response.json()["detail"]

@@ -78,3 +78,19 @@ The synthetic benchmark is a software regression signal, **not** a trained ML mo
 ## Important limitations
 
 This is a development POC, not a production-ready SOC: authentication/RBAC, TLS, secrets management, external log collectors, Kafka-backed ingestion wiring, Sigma rule compatibility, vector embedding ingestion, a full MCP transport, A2A/ACP protocol implementations, and production hardening remain future work. Kafka and Neo4j are optional infrastructure profiles and are not yet wired into the core ingestion path. The included detections are illustrative heuristics, not a replacement for tested detection content. Review all alerts and AI output with a human analyst.
+
+
+## Release hardening patch (2026-10-26)
+
+This patch adds defense-in-depth HTTP response headers and an early request-body size guard.
+`MAX_REQUEST_BYTES` defaults to 10 MiB and can be changed in `.env`; oversized requests
+with a declared `Content-Length` are rejected with HTTP 413. API responses are marked
+`Cache-Control: no-store`, and include `X-Content-Type-Options`, `X-Frame-Options`,
+`Referrer-Policy`, and `Permissions-Policy`. Regression tests cover these controls.
+
+**Important security boundary:** these headers and the size guard are not authentication,
+authorization, TLS, tenant isolation, or a WAF. Keep AEGIS behind a private network or
+authenticated reverse proxy. Do not expose API, PostgreSQL, Redis, Ollama, Qdrant, Kafka,
+or other optional service ports directly to the public internet. Rotate all sample/default
+credentials before any shared or non-local deployment. Browser-side API keys are not a
+safe substitute for server-side authentication.
