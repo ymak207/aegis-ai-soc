@@ -60,7 +60,7 @@ Model weights can consume several gigabytes. Do not enable every profile at once
 
 ## UI workspaces
 
-The web console includes Command center, Detection & response, Intel & knowledge, and Stack & evaluation workspaces. The Stack & evaluation page shows live core dependency checks and actual Prometheus-format counters. ML model quality, agent task success, RAG recall and graph quality are explicitly marked unmeasured until repeatable labeled benchmarks and integrated runtimes are added; the UI does not invent quality scores.
+The web console includes Command center, Detection & response, Intel & knowledge, and Stack & evaluation workspaces. The Stack & evaluation page shows live core dependency checks and actual Prometheus-format counters. Supervised ML model quality, agent task success, RAG recall and graph quality are explicitly marked unmeasured until repeatable labeled benchmarks and integrated runtimes are added; the UI does not invent quality scores.
 
 The frontend's Vite proxy forwards `/api`, `/health` and `/metrics` to the API container. Ports remain bound to loopback by default.
 
@@ -73,7 +73,7 @@ The frontend's Vite proxy forwards `/api`, `/health` and `/metrics` to the API c
 - `GET /api/v1/graph/summary` derives event-type/host/user associations from PostgreSQL. It is graph-lite and does not query Neo4j or infer causality.
 - The Stack & evaluation page can run the benchmark and shows measured event quality, graph-lite counts and recent investigation traces.
 
-The synthetic benchmark is a software regression signal, **not** a trained ML model evaluation and not a production-quality claim. Real ML requires representative labeled data and a versioned train/test split. Retrieval remains keyword-based until embedding generation, vector storage, chunking and retrieval evaluation are connected. The MCP endpoint remains a catalog, not a full MCP transport; A2A/ACP are not implemented. Optional Kafka, Neo4j, Qdrant, ClickHouse, MinIO and Ollama profiles are not automatically wired into the event pipeline merely by starting their containers.
+The synthetic detection benchmark is a software regression signal, **not** a supervised ML model evaluation and not a production-quality claim. Release 0.3 adds an experimental unsupervised IsolationForest anomaly-scoring baseline; its scores are triage signals, not maliciousness probabilities. Real ML requires representative labeled data and a versioned train/test split. Retrieval remains keyword-based until embedding generation, vector storage, chunking and retrieval evaluation are connected. The MCP endpoint remains a catalog, not a full MCP transport; A2A/ACP are not implemented. Optional Kafka, Neo4j, Qdrant, ClickHouse, MinIO and Ollama profiles are not automatically wired into the event pipeline merely by starting their containers.
 
 ## Important limitations
 
@@ -94,3 +94,30 @@ authenticated reverse proxy. Do not expose API, PostgreSQL, Redis, Ollama, Qdran
 or other optional service ports directly to the public internet. Rotate all sample/default
 credentials before any shared or non-local deployment. Browser-side API keys are not a
 safe substitute for server-side authentication.
+
+## Release 0.3 — Lab and Sources
+
+### AEGIS Lab
+
+- `GET /api/v1/lab/scenarios` returns the versioned scenario catalog across e-commerce, telecom, logistics, cloud/SaaS and financial services. `GET /api/v1/lab/export?format=jsonl|csv|json` exports recent synthetic Lab/simulation events for offline import testing.
+- `POST /api/v1/lab/run` runs `domain_smoke`, `benign_baseline`, `mixed_suite`, or `all`; accepts `domain` (`all` or one domain) and `scale` (1–20). Results are persisted in `lab_runs` and audited. Mixed/all suites also execute the existing two-event correlation simulator for each selected domain.
+- Synthetic events use documentation-only TEST-NET addresses and are persisted in the same database and detection path as normal events. Runs are not destructive and will add events/alerts/correlation evidence to your environment.
+- The suite validates deterministic rule and correlation behavior only. It does not emulate a complete attacker, prove production detection quality, or evaluate LLM answer quality.
+
+### Sources and imports
+
+- `GET/POST /api/v1/sources` lists/registers source metadata; `PATCH /api/v1/sources/{id}` updates an operator-managed status. Source status is not a live connectivity probe.
+- `POST /api/v1/sources/import` accepts `source_name`, `domain`, `format` (`json`, `jsonl`, `ndjson`, `csv`, `text`, `syslog`), `content`, and optional `mapping` (`canonical_field` to input field). Requests are limited to 5 MB and 500 records and pass through the existing event normalization/detection path.
+- Text/syslog parsing is deliberately conservative: it recognizes a small set of authentication, privilege, suspicious-process and malware phrases, preserving raw lines. Unknown lines become `log_message`; vendor-specific parsers are still needed.
+- File/manual source types have functional import paths. Webhook, REST API, syslog listener and Kafka consumer source types are registry/onboarding metadata only until their connector runtimes are implemented. Do not mark them connected based only on registry status.
+- Source `config` rejects obvious credential-bearing keys. Store real credentials in deployment secrets, never in source metadata or browser code.
+
+### Release limitations
+
+This release adds the Lab and Sources experience and source/file import path; it does not turn every optional Compose service into an integrated runtime. Supervised ML/model registry/drift monitoring, live vendor connectors, authentication/RBAC, tenant isolation, full Sigma support, full packet-capture analysis, and production-ready multi-agent orchestration remain separate engineering work. Keep the application private and analyst-reviewed.
+
+### Local anomaly-scoring baseline
+
+- `POST /api/v1/ml/anomaly/run?limit=1000` fits a scikit-learn IsolationForest on recent stored event features (requires at least 20 events) and persists a versioned run report.
+- `GET /api/v1/ml/anomaly/runs` lists previous reports. The Lab workspace exposes the action and top scored events.
+- This is a real unsupervised ML baseline, but it is trained on the selected current event population; it is not a supervised classifier, does not provide maliciousness probabilities, and has no durable fitted artifact or drift monitoring yet. Treat results as analyst prioritization only. For meaningful evaluation, use representative telemetry and a separate labeled holdout set.

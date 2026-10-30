@@ -1,0 +1,30 @@
+{
+  "events": [
+    {
+      "event_time": "2026-10-30T09:00:01Z",
+      "event_type": "authentication_failure",
+      "severity": "high",
+      "src_ip": "192.0.2.10",
+      "username": "acceptance-user-auth",
+      "host": "acceptance-idp-01",
+      "message": "AEGIS-ACCEPTANCE-PACK-02: controlled authentication failure test",
+      "raw": {
+        "test_run": "AEGIS-ACCEPTANCE-PACK-02",
+        "case": "json-auth-positive"
+      }
+    },
+    {
+      "event_time": "2026-10-30T09:00:02Z",
+      "event_type": "normal_activity",
+      "severity": "informational",
+      "src_ip": "192.0.2.11",
+      "username": "acceptance-user-benign",
+      "host": "acceptance-app-01",
+      "message": "AEGIS-ACCEPTANCE-PACK-02: controlled benign activity test",
+      "raw": {
+        "test_run": "AEGIS-ACCEPTANCE-PACK-02",
+        "case": "json-benign-negative"
+      }
+    }
+  ]
+}

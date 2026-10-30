@@ -1,0 +1,157 @@
+{
+  "marker": "AEGIS-ACCEPTANCE-PACK-02",
+  "base_url": "http://127.0.0.1:8000",
+  "passed": 13,
+  "failed": 0,
+  "tests": [
+    {
+      "test": "source_registration",
+      "passed": true,
+      "detail": {
+        "http_status": 201,
+        "source_id": "9dfd9438-3c02-4f74-80ae-ef9a1830725f"
+      }
+    },
+    {
+      "test": "json_import",
+      "passed": true,
+      "detail": {
+        "http_status": 200,
+        "input_count": 2,
+        "accepted": 2,
+        "streaming": {
+          "state": "disabled",
+          "published": 0
+        },
+        "error": null
+      }
+    },
+    {
+      "test": "json_import_counts",
+      "passed": true,
+      "detail": {
+        "input_count": 2,
+        "accepted": 2
+      }
+    },
+    {
+      "test": "jsonl_mapped_import",
+      "passed": true,
+      "detail": {
+        "http_status": 200,
+        "input_count": 2,
+        "accepted": 2,
+        "streaming": {
+          "state": "disabled",
+          "published": 0
+        },
+        "error": null
+      }
+    },
+    {
+      "test": "jsonl_mapped_import_counts",
+      "passed": true,
+      "detail": {
+        "input_count": 2,
+        "accepted": 2
+      }
+    },
+    {
+      "test": "csv_mapped_import",
+      "passed": true,
+      "detail": {
+        "http_status": 200,
+        "input_count": 2,
+        "accepted": 2,
+        "streaming": {
+          "state": "disabled",
+          "published": 0
+        },
+        "error": null
+      }
+    },
+    {
+      "test": "csv_mapped_import_counts",
+      "passed": true,
+      "detail": {
+        "input_count": 2,
+        "accepted": 2
+      }
+    },
+    {
+      "test": "syslog_import",
+      "passed": true,
+      "detail": {
+        "http_status": 200,
+        "input_count": 3,
+        "accepted": 3,
+        "streaming": {
+          "state": "disabled",
+          "published": 0
+        },
+        "error": null
+      }
+    },
+    {
+      "test": "syslog_import_counts",
+      "passed": true,
+      "detail": {
+        "input_count": 3,
+        "accepted": 3
+      }
+    },
+    {
+      "test": "event_read_after_write",
+      "passed": true,
+      "detail": {
+        "http_status": 200,
+        "events_for_test_source": 9,
+        "expected": 9,
+        "event_types": [
+          "log_message",
+          "privilege_escalation",
+          "authentication_failure",
+          "normal_activity",
+          "suspicious_process",
+          "normal_activity",
+          "privilege_escalation",
+          "normal_activity",
+          "authentication_failure"
+        ]
+      }
+    },
+    {
+      "test": "alert_read_after_write",
+      "passed": true,
+      "detail": {
+        "http_status": 200,
+        "tagged_open_alerts_visible": 4
+      }
+    },
+    {
+      "test": "malformed_json_rejected",
+      "passed": true,
+      "detail": {
+        "http_status": 422,
+        "response": {
+          "detail": "Import validation failed: Expecting value: line 1 column 13 (char 12)"
+        }
+      }
+    },
+    {
+      "test": "credential_config_rejected",
+      "passed": true,
+      "detail": {
+        "http_status": 422,
+        "response": {
+          "detail": "Do not store credentials in source config; configure secret references outside AEGIS."
+        }
+      }
+    }
+  ],
+  "cleanup": {
+    "source_id": "9dfd9438-3c02-4f74-80ae-ef9a1830725f",
+    "source_name": "AEGIS-ACCEPTANCE-PACK-02-file-import",
+    "instructions": "Review the report, then run the existing cleanup_tagged_data.sh."
+  }
+}

@@ -12,7 +12,10 @@ type CorrelationLead = { id: string; rule_id: string; domain: string; title: str
 type StudioDomain = { id: string; label: string; event_families: string[]; sources: string[]; required_context: string[]; evaluation_dimensions: string[]; configuration_status: string; configuration_note: string; evaluation_endpoint: string; run_endpoint: string };
 type StudioCatalog = { catalog_version: string; mode: string; domains: StudioDomain[]; capabilities: Array<{id:string;label:string;status:string;evaluation:string[]}>; next_configuration_steps: string[] };
 type DomainEvaluation = { id?: string; domain: string; dataset_version: string; evaluation_type: string; sample_count: number; confusion_matrix: {tp:number;fp:number;tn:number;fn:number}; precision:number; recall:number; f1:number; accuracy:number; pass_count:number; limitations:string[] };
-type Page = "overview" | "detections" | "knowledge" | "domainStudio" | "platform";
+type Page = "overview" | "detections" | "knowledge" | "domainStudio" | "platform" | "lab" | "sources";
+type SourceItem = {id:string;name:string;source_type:string;domain:string;status:string;connection_mode:string;config?:Record<string,unknown>;last_seen_at?:string|null};
+type LabScenario = {id:string;domain:string;event_type:string;title:string;expected:string;status:string};
+type LabReport = {run_id?:string;dataset_version?:string;suite?:string;domain_scope?:string;result_count?:number;passed?:number;failed?:number;pass_rate?:number;results?:Array<Record<string,unknown>>;limitations?:string[]};
 const API = "/api/v1";
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers || {}) } });
@@ -54,6 +57,21 @@ function App() {
   const [studioDomain, setStudioDomain] = React.useState("ecommerce");
   const [domainEvaluation, setDomainEvaluation] = React.useState<DomainEvaluation | null>(null);
   const [domainEvalHistory, setDomainEvalHistory] = React.useState<DomainEvaluation | null>(null);
+  const [sources, setSources] = React.useState<SourceItem[]>([]);
+  const [sourceName, setSourceName] = React.useState("Client sample source");
+  const [sourceType, setSourceType] = React.useState("file_import");
+  const [sourceDomain, setSourceDomain] = React.useState("cloud_saas");
+  const [sourceConfigText, setSourceConfigText] = React.useState('{"description":"Demo source; no credentials"}');
+  const [labDomain, setLabDomain] = React.useState("all");
+  const [labSuite, setLabSuite] = React.useState("mixed_suite");
+  const [labScale, setLabScale] = React.useState(1);
+  const [labScenarios, setLabScenarios] = React.useState<LabScenario[]>([]);
+  const [labReport, setLabReport] = React.useState<LabReport | null>(null);
+  const [anomalyReport, setAnomalyReport] = React.useState<Record<string,unknown> | null>(null);
+  const [labRuns, setLabRuns] = React.useState<Array<Record<string, unknown>>>([]);
+  const [importFormat, setImportFormat] = React.useState("json");
+  const [importContent, setImportContent] = React.useState('[{"timestamp":"2026-10-27T08:00:00Z","type":"authentication_failure","severity":"high","source_ip":"198.51.100.23","user":"lab-import-user","message":"Repeated failed sign-in attempts"}]');
+  const [importMapping, setImportMapping] = React.useState('{"event_time":"timestamp","event_type":"type","src_ip":"source_ip","username":"user"}');
   React.useEffect(() => {
     if (!message && !error) return;
     const timeout = window.setTimeout(() => {
@@ -100,7 +118,7 @@ function App() {
           {name:"Redis",state:health.checks.redis === "ok" ? "online" : "offline",detail:"Cache / queue dependency health probe"},
           ...liveIntegrations.items.map(x=>({name:x.name,state:x.state,detail:x.detail})),
           {name:"MCP JSON-RPC",state:"online",detail:`Read-only MCP-compatible initialize/tools/list/tools/call endpoint; ${tools.tools.length} legacy catalog entries`},
-          {name:"ML model registry",state:"not_configured",detail:"No trained model or registry is configured; synthetic rule benchmark remains separate."},
+          {name:"ML anomaly baseline",state:"experimental",detail:"IsolationForest baseline available; not a supervised model registry and not a maliciousness verdict."},
         ] });
       return true;
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load platform status"); return false; }
@@ -130,6 +148,8 @@ function App() {
   }, [studioDomain]);
   React.useEffect(() => { if (page === "domainStudio") void refreshStudio(); }, [page, refreshStudio]);
   React.useEffect(() => { if (page === "detections") void refreshCorrelations(); }, [page, refreshCorrelations]);
+  React.useEffect(() => { if (page === "sources") void refreshSources(); }, [page]);
+  React.useEffect(() => { if (page === "lab") void refreshLab(); }, [page]);
 
   async function runScopedRefresh(label: string, work: () => Promise<boolean>) {
     if (busy) return;
@@ -228,8 +248,38 @@ function App() {
   }
   async function searchKnowledge(e: React.FormEvent) { e.preventDefault(); await action(async () => { const r=await request<{items:DocumentItem[];mode:string}>(`${API}/knowledge/search?q=${encodeURIComponent(searchQuery)}&limit=10`); setSearchResults(r.items); setMessage(`Knowledge search mode: ${r.mode}`); }, undefined); }
 
+  async function refreshSources() {
+    try { const r=await request<{items:SourceItem[]}>(`${API}/sources`); setSources(r.items); return true; }
+    catch(e) { setError(e instanceof Error ? e.message : "Could not load sources"); return false; }
+  }
+  async function refreshLab() {
+    try { const [s,r]=await Promise.all([request<{items:LabScenario[]}>(`${API}/lab/scenarios`),request<{items:Array<Record<string,unknown>>}>(`${API}/lab/runs?limit=10`)]); setLabScenarios(s.items); setLabRuns(r.items); return true; }
+    catch(e) { setError(e instanceof Error ? e.message : "Could not load Lab"); return false; }
+  }
+  async function createSource(e: React.FormEvent) {
+    e.preventDefault();
+    await action(async()=>{ let config:Record<string,unknown>; try { config=JSON.parse(sourceConfigText); } catch { throw new Error("Source config must be valid JSON"); }
+      await request(`${API}/sources`,{method:"POST",body:JSON.stringify({name:sourceName,source_type:sourceType,domain:sourceDomain,config})}); await refreshSources(); },"Source configuration saved. Live connectivity is not implied.");
+  }
+  async function importSource(e: React.FormEvent) {
+    e.preventDefault();
+    await action(async()=>{ let mapping:Record<string,string>; try { mapping=JSON.parse(importMapping); } catch { throw new Error("Field mapping must be valid JSON"); }
+      const r=await request<Record<string,unknown>>(`${API}/sources/import`,{method:"POST",body:JSON.stringify({source_name:sourceName,domain:sourceDomain,format:importFormat,content:importContent,mapping})});
+      setInvestigation(r); await refreshSources(); await refresh(); },"Import processed through the shared normalization and detection pipeline.");
+  }
+  async function runLab() {
+    await action(async()=>{ const r=await request<LabReport>(`${API}/lab/run`,{method:"POST",body:JSON.stringify({domain:labDomain,scenario:labSuite,scale:labScale})}); setLabReport(r); await refreshLab(); await refresh(); },"Lab suite completed; inspect every assertion and limitation.");
+  }
+  async function runAnomalyModel() {
+    await action(async()=>{ const r=await request<Record<string,unknown>>(`${API}/ml/anomaly/run?limit=1000`,{method:"POST"}); setAnomalyReport(r); },"IsolationForest baseline fitted and scored stored events; review its limitations.");
+  }
+  async function updateSourceStatus(source: SourceItem, next: string) {
+    await action(async()=>{ await request(`${API}/sources/${encodeURIComponent(source.id)}`,{method:"PATCH",body:JSON.stringify({status:next})}); await refreshSources(); },"Source status updated. This is an operator label, not a connectivity test.");
+  }
+
   const nav: {id:Page; label:string; sub:string}[] = [
     {id:"overview",label:"Command center",sub:"Live operations"}, {id:"detections",label:"Detection & response",sub:"Events · alerts · cases"},
+    {id:"lab",label:"AEGIS Lab",sub:"Scenarios · pass/fail"}, {id:"sources",label:"Sources",sub:"Onboarding · import"},
     {id:"knowledge",label:"Intel & knowledge",sub:"Indicators · retrieval"}, {id:"domainStudio",label:"Domain studio",sub:"Profiles · rules · evaluation"}, {id:"platform",label:"Stack & evaluation",sub:"Health · quality · capacity"}
   ];
   const studioDomainProfile = studioCatalog?.domains.find(x => x.id === studioDomain);
@@ -237,13 +287,33 @@ function App() {
   return <main className="app-shell">
     <aside className="sidebar"><div className="brand"><div className="brand-mark">A</div><div><strong>AEGIS</strong><span>AI SECURITY OPERATIONS</span></div></div>
       <div className="workspace-label">WORKSPACE <span>LOCAL POC</span></div>
-      <nav>{nav.map(n=><button key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}><span className="nav-glyph">{({overview:"◈",detections:"⌁",knowledge:"◎",domainStudio:"◇",platform:"▦"} as Record<string,string>)[n.id]}</span><span><b>{n.label}</b><small>{n.sub}</small></span>{page===n.id&&<i/>}</button>)}</nav>
-      <div className="sidebar-bottom"><div className={`health-chip ${status==="Connected"?"ok":"bad"}`}><i/>{status==="Connected"?"API CONNECTED":"API UNAVAILABLE"}</div><small>Defensive use only · analyst reviewed</small><small>Build 0.2.0 · self-hosted</small></div>
+      <nav>{nav.map(n=><button key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}><span className="nav-glyph">{({overview:"◈",detections:"⌁",knowledge:"◎",domainStudio:"◇",platform:"▦",lab:"⚗",sources:"⇄"} as Record<string,string>)[n.id]}</span><span><b>{n.label}</b><small>{n.sub}</small></span>{page===n.id&&<i/>}</button>)}</nav>
+      <div className="sidebar-bottom"><div className={`health-chip ${status==="Connected"?"ok":"bad"}`}><i/>{status==="Connected"?"API CONNECTED":"API UNAVAILABLE"}</div><small>Defensive use only · analyst reviewed</small><small>Build 0.3.0 · self-hosted</small></div>
     </aside>
     <section className="main-area"><header className="topbar"><div><span className="breadcrumb">AEGIS / </span><strong>{nav.find(n=>n.id===page)?.label}</strong></div><div className="top-actions"><span className="live-indicator"><i/> LIVE · 15S REFRESH</span><button className="button secondary" disabled={busy} onClick={()=>void handleRefresh()}>{busy?"Refreshing…":"↻ Refresh"}</button></div></header>
       <section className="page-content">
         {error && <div className="notice-panel" role="alert"><b>Request failed</b><p>{error}</p></div>}
         {message && <div className="notice-panel" role="status"><p>{message}</p></div>}
+        {page==="lab" && <>
+          <div className="page-title"><div><p className="eyebrow">CONTROLLED DEMONSTRATION / REPRODUCIBLE TESTS</p><h1>AEGIS Lab<span>.</span></h1><p className="lede">Generate synthetic telemetry across five domains and assert the actual rule outcomes. This is deterministic scenario testing, not attack emulation or proof of production efficacy.</p></div></div>
+          <div className="two-col"><article className="surface pad"><p className="eyebrow">RUN A SCENARIO SUITE</p><h2>Lab controls</h2>
+            <label>Domain scope<select value={labDomain} onChange={e=>setLabDomain(e.target.value)}><option value="all">All five domains</option><option value="cloud_saas">Cloud / SaaS</option><option value="ecommerce">E-commerce</option><option value="telecom">Telecom</option><option value="logistics">Logistics</option><option value="financial_services">Financial services</option></select></label>
+            <label>Suite<select value={labSuite} onChange={e=>setLabSuite(e.target.value)}><option value="mixed_suite">Mixed suite — detections + benign baselines</option><option value="domain_smoke">Domain rule smoke</option><option value="benign_baseline">Benign-only negative tests</option><option value="all">All current rule smoke cases</option></select></label>
+            <label>Iterations per detection scenario<input type="number" min={1} max={20} value={labScale} onChange={e=>setLabScale(Math.max(1,Math.min(20,Number(e.target.value)||1)))}/></label>
+            <div className="top-actions"><button className="button primary" disabled={busy} onClick={()=>void runLab()}>{busy?"Running scenarios…":"▶ Run Lab suite"}</button><button className="button secondary" disabled={busy} onClick={()=>void runAnomalyModel()}>✳ Run ML anomaly baseline</button></div><p className="hint">Uses reserved TEST-NET IPs and synthetic records only. Events are persisted and can create alerts; no external systems are contacted. ML requires at least 20 stored events.</p>
+          </article><article className="surface pad"><p className="eyebrow">LATEST ASSERTION REPORT</p><h2>{labReport?`${labReport.passed}/${labReport.result_count} assertions passed`:"No run in this session"}</h2>{labReport&&<><div className="metric-grid compact"><article className="metric-card"><span className="metric-top">PASS RATE</span><strong>{((labReport.pass_rate||0)*100).toFixed(1)}%</strong><small>Defined synthetic assertions</small></article><article className="metric-card"><span className="metric-top">FAILED</span><strong>{labReport.failed??"—"}</strong><small>Requires investigation</small></article></div><pre className="result">{JSON.stringify({run_id:labReport.run_id,dataset_version:labReport.dataset_version,results:labReport.results,limitations:labReport.limitations},null,2)}</pre></>}{!labReport&&<p className="muted">Run a suite to get event IDs, expected/observed alerts, pass/fail assertions, and limitations.</p>}</article></div>
+          {anomalyReport&&<><div className="section-head"><div><p className="eyebrow">UNSUPERVISED ML / TRIAGE ONLY</p><h2>IsolationForest result</h2></div></div><div className="surface pad"><p>Model: <b>{String(anomalyReport.model_name)}</b> · Version: <b>{String(anomalyReport.model_version)}</b> · Samples: <b>{String(anomalyReport.sample_count)}</b> · Candidates: <b>{String(anomalyReport.anomaly_candidate_count)}</b></p><pre className="result">{JSON.stringify({top_anomalies:anomalyReport.top_anomalies,limitations:anomalyReport.limitations},null,2)}</pre></div></>}
+          <div className="section-head"><div><p className="eyebrow">DATASET ARTIFACTS</p><h2>Export generated evidence</h2></div><div className="top-actions"><a className="button secondary" href={`${API}/lab/export?format=jsonl`} download>Export JSONL</a><a className="button secondary" href={`${API}/lab/export?format=csv`} download>Export CSV</a><a className="button secondary" href={`${API}/lab/export?format=json`} download>Export JSON</a></div></div><p className="hint">Exports recent persisted Lab and correlation-simulation events only. Use these files to test offline imports; exports may contain synthetic identifiers and should be labeled as synthetic.</p>
+          <div className="section-head"><div><p className="eyebrow">SCENARIO CATALOG</p><h2>Defined coverage <span className="count-badge">{labScenarios.length}</span></h2></div></div><div className="surface eval-table"><div className="eval-row eval-header"><span>DOMAIN / SCENARIO</span><span>EXPECTED RESULT</span><span>STATUS</span></div>{labScenarios.map(x=><div className="eval-row" key={x.id}><b>{x.domain}<small>{x.title}</small></b><span><code>{x.event_type}</code> · {x.expected}</span><span className="eval-state partial">{x.status}</span></div>)}{!labScenarios.length&&<p className="empty-state">Loading scenario catalog…</p>}</div>
+          <div className="section-head"><div><p className="eyebrow">RUN HISTORY</p><h2>Persisted Lab runs</h2></div></div><div className="surface eval-table">{labRuns.map((r,i)=><div className="eval-row" key={String(r.id||i)}><b>{String(r.scenario)}</b><span>{String(r.domain)} · {String((r.report as Record<string,unknown>|undefined)?.passed??"—")} passed / {String((r.report as Record<string,unknown>|undefined)?.failed??"—")} failed</span><span className={`eval-state ${r.status==="passed"?"":"partial"}`}>{String(r.status)}</span></div>)}{!labRuns.length&&<p className="empty-state">No persisted Lab runs yet.</p>}</div>
+        </>}
+        {page==="sources" && <>
+          <div className="page-title"><div><p className="eyebrow">CLIENT ENVIRONMENT / DATA ONBOARDING</p><h1>Sources<span>.</span></h1><p className="lede">Register telemetry sources, preview a mapping, and import JSON, JSONL or CSV through the same event pipeline used by AEGIS Lab. Registered live connector types are not automatically connected.</p></div></div>
+          <div className="two-col"><article className="surface pad"><p className="eyebrow">SOURCE REGISTRY</p><h2>Configure a source</h2><form onSubmit={createSource}><label>Source name<input value={sourceName} onChange={e=>setSourceName(e.target.value)} required minLength={2}/></label><label>Source type<select value={sourceType} onChange={e=>setSourceType(e.target.value)}><option value="file_import">File import — implemented</option><option value="manual">Manual — implemented</option><option value="webhook">Webhook — adapter required</option><option value="rest_api">REST API — connector required</option><option value="syslog">Syslog — collector required</option><option value="kafka">Kafka — consumer required</option></select></label><label>Domain<select value={sourceDomain} onChange={e=>setSourceDomain(e.target.value)}><option value="cloud_saas">Cloud / SaaS</option><option value="ecommerce">E-commerce</option><option value="telecom">Telecom</option><option value="logistics">Logistics</option><option value="financial_services">Financial services</option></select></label><label>Non-secret config JSON<textarea rows={3} value={sourceConfigText} onChange={e=>setSourceConfigText(e.target.value)}/></label><button className="button primary" disabled={busy}>＋ Save source</button><p className="hint">Do not paste passwords, tokens, API keys, or private keys. Store credentials in a deployment secret manager.</p></form></article>
+          <article className="surface pad"><p className="eyebrow">FILE / PAYLOAD IMPORT</p><h2>Map and ingest records</h2><form onSubmit={importSource}><label>Choose a local file<input type="file" accept=".json,.jsonl,.ndjson,.csv,.log,.txt" onChange={async e=>{const f=e.target.files?.[0]; if(!f)return; if(f.size>5*1024*1024){setError("Files are limited to 5 MB per import.");return;} setImportContent(await f.text()); const ext=f.name.toLowerCase().split(".").pop(); setImportFormat(ext==="csv"?"csv":ext==="jsonl"?"jsonl":ext==="ndjson"?"ndjson":(ext==="log"||ext==="txt")?"text":"json"); setSourceName(f.name.replace(/\.[^.]+$/,"").slice(0,160)||"File import"); }}/></label><label>Format<select value={importFormat} onChange={e=>setImportFormat(e.target.value)}><option value="json">JSON</option><option value="jsonl">JSONL / NDJSON</option><option value="ndjson">NDJSON</option><option value="csv">CSV</option><option value="text">Plain text logs</option><option value="syslog">Syslog text</option></select></label><label>Field mapping JSON<textarea rows={3} value={importMapping} onChange={e=>setImportMapping(e.target.value)}/></label><label>File content / payload<textarea rows={8} value={importContent} onChange={e=>setImportContent(e.target.value)} required/></label><button className="button primary" disabled={busy}>⇧ Validate & import</button><p className="hint">Limits: 5 MB and 500 records per request. Mapping uses canonical_field → input_field. Import errors return a validation response; successful records use the same deduplication and detection path.</p></form>{investigation&&<><h3>Last import / operation response</h3><pre className="result">{JSON.stringify(investigation,null,2)}</pre></>}</article></div>
+          <div className="section-head"><div><p className="eyebrow">SOURCE HEALTH</p><h2>Registered sources <span className="count-badge">{sources.length}</span></h2></div><button className="button secondary" disabled={busy} onClick={()=>void refreshSources()}>↻ Refresh sources</button></div><div className="surface eval-table"><div className="eval-row eval-header"><span>SOURCE</span><span>DOMAIN / CONNECTION MODE</span><span>OPERATOR STATUS</span></div>{sources.map(x=><div className="eval-row" key={x.id}><b>{x.name}<small>{x.source_type}</small></b><span>{x.domain} · {x.connection_mode==="implemented"?"import path implemented":"adapter required; not connected"}</span><span><select aria-label={`Set status for ${x.name}`} value={x.status} onChange={e=>void updateSourceStatus(x,e.target.value)}><option value="configured">configured</option><option value="validating">validating</option><option value="connected">connected</option><option value="ingesting">ingesting</option><option value="degraded">degraded</option><option value="disconnected">disconnected</option></select></span></div>)}{!sources.length&&<p className="empty-state">No sources registered. Create a source above. A status label does not prove a live connection.</p>}</div>
+          <div className="notice-panel"><b>Connection truthfulness</b><p>File and manual ingestion are functional. Webhook, REST API, syslog and Kafka are registry types only until their source-specific adapter, credentials, health checks and end-to-end tests are implemented. Status labels are operator-managed and must not be treated as connectivity probes.</p></div>
+        </>}
         {page==="overview" && <>
           <div className="page-title"><div><p className="eyebrow">SECURITY POSTURE / OVERVIEW</p><h1>See the signal<span>.</span></h1><p className="lede">One workspace for security telemetry, detection triage and evidence-led investigation.</p></div><div className="posture-card"><span>PLATFORM STATUS</span><strong className={status==="Connected"?"text-green":"text-amber"}>{status.toUpperCase()}</strong><small>Core dependencies polled every 15 seconds</small></div></div>
           <div className="metric-grid">{[["Events ingested",overview?.events,"↗","All normalized events"],["Open alerts",overview?.alerts_open,"⌁","Awaiting analyst triage"],["Critical alerts",overview?.alerts_critical,"!","Open critical severity"],["Open cases",overview?.cases_open,"◇","Active investigations"],["Threat indicators",overview?.indicators,"◎","Local IOC watchlist"],["Knowledge documents",overview?.documents,"▤","Stored reference docs"]].map(([label,value,glyph,foot])=><article className="metric-card" key={String(label)}><div className="metric-top"><span>{label}</span><b>{glyph}</b></div><strong>{fmt(value as number|undefined)}</strong><small>{foot}</small><div className="metric-track"><i style={{width:`${Math.min(100,Number(value||0)*8)}%`}}/></div></article>)}</div>

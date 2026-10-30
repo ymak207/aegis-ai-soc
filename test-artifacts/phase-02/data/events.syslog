@@ -1,0 +1,3 @@
+Oct 30 09:03:01 acceptance-host sshd[1001]: Failed password for user acceptance-syslog-user from 192.0.2.40 port 2222 ssh2
+Oct 30 09:03:02 acceptance-host sudo[1002]: privilege escalation user=acceptance-syslog-admin from 192.0.2.41
+Oct 30 09:03:03 acceptance-host app[1003]: routine health check completed for user acceptance-syslog-reader

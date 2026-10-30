@@ -1,0 +1,2310 @@
+{
+  "captured_at": "2026-10-30T09:06:24.216582+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "mutating_requests_sent": 0,
+  "results": [
+    {
+      "path": "/health/ready",
+      "status": 200,
+      "body": {
+        "status": "ready",
+        "checks": {
+          "postgres": "ok",
+          "redis": "ok"
+        }
+      }
+    },
+    {
+      "path": "/api/v1/overview",
+      "status": 200,
+      "body": {
+        "events": 7,
+        "alerts_open": 7,
+        "alerts_critical": 0,
+        "cases_open": 6,
+        "indicators": 1,
+        "documents": 2
+      }
+    },
+    {
+      "path": "/api/v1/lab/scenarios",
+      "status": 200,
+      "body": {
+        "catalog_version": "aegis-lab-v1",
+        "domains": [
+          "ecommerce",
+          "telecom",
+          "logistics",
+          "cloud_saas",
+          "financial_services"
+        ],
+        "scenario_count": 35,
+        "items": [
+          {
+            "id": "ecommerce:account_takeover",
+            "domain": "ecommerce",
+            "event_type": "account_takeover",
+            "title": "Suspicious account takeover sequence",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "ecommerce:payment_abuse",
+            "domain": "ecommerce",
+            "event_type": "payment_abuse",
+            "title": "Payment abuse signal",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "ecommerce:promotion_abuse",
+            "domain": "ecommerce",
+            "event_type": "promotion_abuse",
+            "title": "Promotion abuse signal",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "ecommerce:checkout_anomaly",
+            "domain": "ecommerce",
+            "event_type": "checkout_anomaly",
+            "title": "Checkout anomaly",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "ecommerce:admin_access",
+            "domain": "ecommerce",
+            "event_type": "admin_access",
+            "title": "Privileged commerce administration",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "ecommerce:benign_baseline",
+            "domain": "ecommerce",
+            "event_type": "normal_activity",
+            "title": "E-commerce & digital commerce benign baseline",
+            "expected": "no domain-family alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-negative-smoke"
+          },
+          {
+            "id": "telecom:sim_swap",
+            "domain": "telecom",
+            "event_type": "sim_swap",
+            "title": "SIM provisioning change",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "telecom:subscriber_account_abuse",
+            "domain": "telecom",
+            "event_type": "subscriber_account_abuse",
+            "title": "Subscriber account abuse",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "telecom:signalling_anomaly",
+            "domain": "telecom",
+            "event_type": "signalling_anomaly",
+            "title": "Signalling anomaly",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "telecom:cdr_anomaly",
+            "domain": "telecom",
+            "event_type": "cdr_anomaly",
+            "title": "Call detail record anomaly",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "telecom:privileged_network_change",
+            "domain": "telecom",
+            "event_type": "privileged_network_change",
+            "title": "Privileged network change",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "telecom:benign_baseline",
+            "domain": "telecom",
+            "event_type": "normal_activity",
+            "title": "Telecommunications benign baseline",
+            "expected": "no domain-family alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-negative-smoke"
+          },
+          {
+            "id": "logistics:shipment_route_deviation",
+            "domain": "logistics",
+            "event_type": "shipment_route_deviation",
+            "title": "Shipment route deviation",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "logistics:warehouse_access_abuse",
+            "domain": "logistics",
+            "event_type": "warehouse_access_abuse",
+            "title": "Warehouse access abuse",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "logistics:fleet_device_compromise",
+            "domain": "logistics",
+            "event_type": "fleet_device_compromise",
+            "title": "Fleet device compromise",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "logistics:manifest_tampering",
+            "domain": "logistics",
+            "event_type": "manifest_tampering",
+            "title": "Manifest tampering",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "logistics:partner_api_abuse",
+            "domain": "logistics",
+            "event_type": "partner_api_abuse",
+            "title": "Partner API abuse",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "logistics:benign_baseline",
+            "domain": "logistics",
+            "event_type": "normal_activity",
+            "title": "Logistics & supply chain benign baseline",
+            "expected": "no domain-family alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-negative-smoke"
+          },
+          {
+            "id": "cloud_saas:credential_abuse",
+            "domain": "cloud_saas",
+            "event_type": "credential_abuse",
+            "title": "Cloud credential abuse",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "cloud_saas:privilege_escalation",
+            "domain": "cloud_saas",
+            "event_type": "privilege_escalation",
+            "title": "Cloud privilege escalation",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "cloud_saas:public_resource_exposure",
+            "domain": "cloud_saas",
+            "event_type": "public_resource_exposure",
+            "title": "Public resource exposure",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "cloud_saas:control_plane_anomaly",
+            "domain": "cloud_saas",
+            "event_type": "control_plane_anomaly",
+            "title": "Control-plane anomaly",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "cloud_saas:data_exfiltration",
+            "domain": "cloud_saas",
+            "event_type": "data_exfiltration",
+            "title": "Potential data exfiltration",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "cloud_saas:benign_baseline",
+            "domain": "cloud_saas",
+            "event_type": "normal_activity",
+            "title": "Cloud & SaaS benign baseline",
+            "expected": "no domain-family alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-negative-smoke"
+          },
+          {
+            "id": "financial_services:account_takeover",
+            "domain": "financial_services",
+            "event_type": "account_takeover",
+            "title": "Financial account takeover",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "financial_services:transaction_abuse",
+            "domain": "financial_services",
+            "event_type": "transaction_abuse",
+            "title": "Transaction abuse signal",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "financial_services:privileged_access_abuse",
+            "domain": "financial_services",
+            "event_type": "privileged_access_abuse",
+            "title": "Privileged access abuse",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "financial_services:api_abuse",
+            "domain": "financial_services",
+            "event_type": "api_abuse",
+            "title": "Financial API abuse",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "financial_services:sensitive_data_access",
+            "domain": "financial_services",
+            "event_type": "sensitive_data_access",
+            "title": "Sensitive data access",
+            "expected": "domain rule alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-rule-smoke"
+          },
+          {
+            "id": "financial_services:benign_baseline",
+            "domain": "financial_services",
+            "event_type": "normal_activity",
+            "title": "Financial services benign baseline",
+            "expected": "no domain-family alert",
+            "dataset_kind": "synthetic",
+            "status": "implemented-negative-smoke"
+          },
+          {
+            "id": "ecommerce:correlation_sequence",
+            "domain": "ecommerce",
+            "event_type": "account_takeover -> payment_abuse",
+            "title": "Correlated sequence: account_takeover followed by payment_abuse",
+            "expected": "one explainable correlation lead with two evidence event IDs",
+            "dataset_kind": "synthetic-sequence",
+            "status": "implemented-correlation-smoke"
+          },
+          {
+            "id": "telecom:correlation_sequence",
+            "domain": "telecom",
+            "event_type": "sim_swap -> subscriber_account_abuse",
+            "title": "Correlated sequence: sim_swap followed by subscriber_account_abuse",
+            "expected": "one explainable correlation lead with two evidence event IDs",
+            "dataset_kind": "synthetic-sequence",
+            "status": "implemented-correlation-smoke"
+          },
+          {
+            "id": "logistics:correlation_sequence",
+            "domain": "logistics",
+            "event_type": "shipment_route_deviation -> warehouse_access_abuse",
+            "title": "Correlated sequence: shipment_route_deviation followed by warehouse_access_abuse",
+            "expected": "one explainable correlation lead with two evidence event IDs",
+            "dataset_kind": "synthetic-sequence",
+            "status": "implemented-correlation-smoke"
+          },
+          {
+            "id": "cloud_saas:correlation_sequence",
+            "domain": "cloud_saas",
+            "event_type": "credential_abuse -> privilege_escalation",
+            "title": "Correlated sequence: credential_abuse followed by privilege_escalation",
+            "expected": "one explainable correlation lead with two evidence event IDs",
+            "dataset_kind": "synthetic-sequence",
+            "status": "implemented-correlation-smoke"
+          },
+          {
+            "id": "financial_services:correlation_sequence",
+            "domain": "financial_services",
+            "event_type": "account_takeover -> transaction_abuse",
+            "title": "Correlated sequence: account_takeover followed by transaction_abuse",
+            "expected": "one explainable correlation lead with two evidence event IDs",
+            "dataset_kind": "synthetic-sequence",
+            "status": "implemented-correlation-smoke"
+          }
+        ],
+        "limitations": [
+          "These are deterministic rule and correlation smoke scenarios, not full attack emulation.",
+          "A passing synthetic scenario proves the defined software path, not production detection effectiveness."
+        ]
+      }
+    },
+    {
+      "path": "/api/v1/lab/runs",
+      "status": 200,
+      "body": {
+        "items": []
+      }
+    },
+    {
+      "path": "/api/v1/sources",
+      "status": 200,
+      "body": {
+        "items": [],
+        "supported_types": {
+          "file_import": "File import (JSON, JSONL, CSV)",
+          "webhook": "HTTP webhook (connector endpoint required)",
+          "rest_api": "REST API pull (connector and credentials required)",
+          "syslog": "Syslog (listener/collector required)",
+          "kafka": "Kafka topic (streaming profile and consumer required)",
+          "manual": "Manual / analyst generated"
+        }
+      }
+    },
+    {
+      "path": "/api/v1/events",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "6c1b6f61-2fc1-4f43-ac97-fd960fa6769c",
+            "event_time": "2026-10-26T05:05:39+00:00",
+            "source": "aegis-safe-simulation",
+            "event_type": "subscriber_account_abuse",
+            "severity": "high",
+            "src_ip": null,
+            "dst_ip": null,
+            "username": "aegis-sim-63a15750",
+            "host": "aegis-simulation-host",
+            "message": "Synthetic simulation event 2 of 2 for telecom; intended correlation trigger"
+          },
+          {
+            "id": "6e095d2a-9aa2-4b43-8831-833212ee4646",
+            "event_time": "2026-10-26T05:04:39+00:00",
+            "source": "aegis-safe-simulation",
+            "event_type": "sim_swap",
+            "severity": "medium",
+            "src_ip": null,
+            "dst_ip": null,
+            "username": "aegis-sim-63a15750",
+            "host": "aegis-simulation-host",
+            "message": "Synthetic simulation event 1 of 2 for telecom; no external system contacted"
+          },
+          {
+            "id": "f14f78a8-6e60-4552-8844-086385c364da",
+            "event_time": "2026-10-23T05:03:32.355500+00:00",
+            "source": "aegis-verification",
+            "event_type": "authentication_failure",
+            "severity": "high",
+            "src_ip": "198.51.100.77",
+            "dst_ip": null,
+            "username": "aegis-test-user",
+            "host": "soc-test-endpoint",
+            "message": "Synthetic verification event: repeated failed authentication attempts for a privileged account"
+          },
+          {
+            "id": "c4aabee3-95ea-4c19-be9c-b07ba3f49242",
+            "event_time": "2026-10-22T08:49:35.379946+00:00",
+            "source": "aegis-demo",
+            "event_type": "suspicious_process",
+            "severity": "high",
+            "src_ip": "198.51.100.23",
+            "dst_ip": null,
+            "username": "demo-admin",
+            "host": "demo-endpoint-01",
+            "message": "Multiple failed logins detected for privileged account"
+          },
+          {
+            "id": "d125a340-a970-4302-92aa-e64685dbd572",
+            "event_time": "2026-10-22T07:18:51.320776+00:00",
+            "source": "aegis-demo",
+            "event_type": "authentication_failure",
+            "severity": "high",
+            "src_ip": "198.51.100.23",
+            "dst_ip": null,
+            "username": "demo-admin",
+            "host": "demo-endpoint-01",
+            "message": "Multiple failed logins detected for privileged account"
+          },
+          {
+            "id": "d60c595e-24bb-4462-9c40-a12a9a83507c",
+            "event_time": "2026-10-21T09:20:26.911624+00:00",
+            "source": "aegis-demo",
+            "event_type": "authentication_failure",
+            "severity": "high",
+            "src_ip": "198.51.100.23",
+            "dst_ip": null,
+            "username": "demo-admin",
+            "host": "demo-endpoint-01",
+            "message": "Multiple failed logins detected for privileged account"
+          },
+          {
+            "id": "3fdc1522-7902-4294-bf34-a816c1bb11a6",
+            "event_time": "2026-10-10T13:12:32.405784+00:00",
+            "source": "aegis-demo",
+            "event_type": "authentication_failure",
+            "severity": "high",
+            "src_ip": "198.51.100.23",
+            "dst_ip": null,
+            "username": "demo-admin",
+            "host": "demo-endpoint-01",
+            "message": "Multiple failed logins detected for privileged account"
+          }
+        ]
+      }
+    },
+    {
+      "path": "/api/v1/alerts",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "5bf336f2-a711-44a8-b823-2904e317291c",
+            "event_id": "6c1b6f61-2fc1-4f43-ac97-fd960fa6769c",
+            "rule_id": "DOMAIN-TELECOM-001",
+            "title": "Telecommunications suspicious activity",
+            "severity": "high",
+            "status": "open",
+            "description": "Event family subscriber_account_abuse requires domain-aware analyst review.",
+            "created_at": "2026-10-26T05:06:09.025563+00:00",
+            "event_type": "subscriber_account_abuse",
+            "src_ip": null,
+            "username": "aegis-sim-63a15750",
+            "host": "aegis-simulation-host",
+            "message": "Synthetic simulation event 2 of 2 for telecom; intended correlation trigger"
+          },
+          {
+            "id": "5db42abc-c33e-4137-a783-15350c360278",
+            "event_id": "6e095d2a-9aa2-4b43-8831-833212ee4646",
+            "rule_id": "DOMAIN-TELECOM-001",
+            "title": "Telecommunications suspicious activity",
+            "severity": "high",
+            "status": "open",
+            "description": "Event family sim_swap requires domain-aware analyst review.",
+            "created_at": "2026-10-26T05:06:09.025563+00:00",
+            "event_type": "sim_swap",
+            "src_ip": null,
+            "username": "aegis-sim-63a15750",
+            "host": "aegis-simulation-host",
+            "message": "Synthetic simulation event 1 of 2 for telecom; no external system contacted"
+          },
+          {
+            "id": "0da790d2-940d-4b49-b460-dc4a18edc632",
+            "event_id": "f14f78a8-6e60-4552-8844-086385c364da",
+            "rule_id": "AUTH-001",
+            "title": "Repeated authentication failures",
+            "severity": "high",
+            "status": "open",
+            "description": "Authentication failure event requires analyst review.",
+            "created_at": "2026-10-23T05:03:32.355773+00:00",
+            "event_type": "authentication_failure",
+            "src_ip": "198.51.100.77",
+            "username": "aegis-test-user",
+            "host": "soc-test-endpoint",
+            "message": "Synthetic verification event: repeated failed authentication attempts for a privileged account"
+          },
+          {
+            "id": "f1034a86-7989-4bff-90e0-c6a26c21b6b5",
+            "event_id": "c4aabee3-95ea-4c19-be9c-b07ba3f49242",
+            "rule_id": "ENDPOINT-001",
+            "title": "Suspicious process execution",
+            "severity": "high",
+            "status": "open",
+            "description": "Endpoint event indicates suspicious process or malware activity.",
+            "created_at": "2026-10-22T08:49:35.380246+00:00",
+            "event_type": "suspicious_process",
+            "src_ip": "198.51.100.23",
+            "username": "demo-admin",
+            "host": "demo-endpoint-01",
+            "message": "Multiple failed logins detected for privileged account"
+          },
+          {
+            "id": "1301c986-4988-4e47-b7c0-81319edc45a2",
+            "event_id": "d125a340-a970-4302-92aa-e64685dbd572",
+            "rule_id": "AUTH-001",
+            "title": "Repeated authentication failures",
+            "severity": "high",
+            "status": "open",
+            "description": "Authentication failure event requires analyst review.",
+            "created_at": "2026-10-22T07:18:51.321175+00:00",
+            "event_type": "authentication_failure",
+            "src_ip": "198.51.100.23",
+            "username": "demo-admin",
+            "host": "demo-endpoint-01",
+            "message": "Multiple failed logins detected for privileged account"
+          },
+          {
+            "id": "f918a7d4-66fb-4217-8f8b-c39f238aaa40",
+            "event_id": "d60c595e-24bb-4462-9c40-a12a9a83507c",
+            "rule_id": "AUTH-001",
+            "title": "Repeated authentication failures",
+            "severity": "high",
+            "status": "open",
+            "description": "Authentication failure event requires analyst review.",
+            "created_at": "2026-10-21T09:20:26.911867+00:00",
+            "event_type": "authentication_failure",
+            "src_ip": "198.51.100.23",
+            "username": "demo-admin",
+            "host": "demo-endpoint-01",
+            "message": "Multiple failed logins detected for privileged account"
+          },
+          {
+            "id": "a4980335-e66e-4cd6-908f-32b948e658ac",
+            "event_id": "3fdc1522-7902-4294-bf34-a816c1bb11a6",
+            "rule_id": "AUTH-001",
+            "title": "Repeated authentication failures",
+            "severity": "high",
+            "status": "open",
+            "description": "Authentication failure event requires analyst review.",
+            "created_at": "2026-10-10T13:12:32.406025+00:00",
+            "event_type": "authentication_failure",
+            "src_ip": "198.51.100.23",
+            "username": "demo-admin",
+            "host": "demo-endpoint-01",
+            "message": "Multiple failed logins detected for privileged account"
+          }
+        ]
+      }
+    },
+    {
+      "path": "/api/v1/correlations",
+      "status": 200,
+      "body": {
+        "mode": "deterministic-multi-event-correlation",
+        "events_considered": 7,
+        "lead_count": 1,
+        "items": [
+          {
+            "id": "CORR-TEL-001:6e095d2a-9aa2-4b43-8831-833212ee4646:6c1b6f61-2fc1-4f43-ac97-fd960fa6769c",
+            "rule_id": "CORR-TEL-001",
+            "domain": "telecom",
+            "title": "Telecom sequence requires review",
+            "severity": "high",
+            "status": "investigation_lead",
+            "entity_type": "username",
+            "entity_value": "aegis-sim-63a15750",
+            "window_minutes": 60,
+            "observed_interval_seconds": 60,
+            "evidence_event_ids": [
+              "6e095d2a-9aa2-4b43-8831-833212ee4646",
+              "6c1b6f61-2fc1-4f43-ac97-fd960fa6769c"
+            ],
+            "event_types": [
+              "sim_swap",
+              "subscriber_account_abuse"
+            ],
+            "explanation": "Observed sim_swap followed by subscriber_account_abuse for the same username within 60 minutes.",
+            "limitations": [
+              "Deterministic correlation heuristic",
+              "Shared entity and event order do not prove causality or compromise"
+            ]
+          }
+        ],
+        "note": "Leads are prioritization hints for human review, not proof of malicious activity."
+      }
+    },
+    {
+      "path": "/api/v1/evaluations/results",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "d74e3abf-067f-4387-ae19-e45313fd1851",
+            "suite": "domain-detection-ecommerce",
+            "metrics": {
+              "f1": 1.0,
+              "domain": "ecommerce",
+              "recall": 1.0,
+              "accuracy": 1.0,
+              "examples": [
+                {
+                  "case": 1,
+                  "pass": true,
+                  "event_type": "account_takeover",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 2,
+                  "pass": true,
+                  "event_type": "payment_abuse",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 3,
+                  "pass": true,
+                  "event_type": "routine_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                }
+              ],
+              "precision": 1.0,
+              "pass_count": 3,
+              "limitations": [
+                "Three synthetic smoke cases only",
+                "Not production detection validation",
+                "Rules require domain-specific labeled datasets before operational use"
+              ],
+              "sample_count": 3,
+              "dataset_version": "aegis-ecommerce-smoke-v1",
+              "evaluation_type": "synthetic-domain-rule-smoke-test",
+              "confusion_matrix": {
+                "fn": 0,
+                "fp": 0,
+                "tn": 1,
+                "tp": 2
+              }
+            },
+            "created_at": "2026-10-23T09:58:29.514624+00:00"
+          },
+          {
+            "id": "22222e58-ac55-4b3d-8ec4-8b204caef64d",
+            "suite": "detection-baseline",
+            "metrics": {
+              "f1": 1.0,
+              "recall": 1.0,
+              "accuracy": 1.0,
+              "examples": [
+                {
+                  "case": 1,
+                  "pass": true,
+                  "event_type": "authentication_failure",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 2,
+                  "pass": true,
+                  "event_type": "failed_login",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 3,
+                  "pass": true,
+                  "event_type": "suspicious_process",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 4,
+                  "pass": true,
+                  "event_type": "malware_detected",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 5,
+                  "pass": true,
+                  "event_type": "privilege_escalation",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 6,
+                  "pass": true,
+                  "event_type": "threat_indicator_match",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 7,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 8,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 9,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 10,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 11,
+                  "pass": true,
+                  "event_type": "process_start",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 12,
+                  "pass": true,
+                  "event_type": "process_start",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                }
+              ],
+              "precision": 1.0,
+              "pass_count": 12,
+              "limitations": [
+                "Synthetic, hand-authored cases only",
+                "Rule/heuristic baseline, not a trained ML model",
+                "Do not interpret these scores as production detection quality"
+              ],
+              "sample_count": 12,
+              "dataset_version": "aegis-synthetic-detection-v1",
+              "confusion_matrix": {
+                "fn": 0,
+                "fp": 0,
+                "tn": 4,
+                "tp": 8
+              }
+            },
+            "created_at": "2026-10-23T08:54:34.906351+00:00"
+          },
+          {
+            "id": "b120bca7-984b-44f7-b597-279a063b05f5",
+            "suite": "detection-baseline",
+            "metrics": {
+              "f1": 1.0,
+              "recall": 1.0,
+              "accuracy": 1.0,
+              "examples": [
+                {
+                  "case": 1,
+                  "pass": true,
+                  "event_type": "authentication_failure",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 2,
+                  "pass": true,
+                  "event_type": "failed_login",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 3,
+                  "pass": true,
+                  "event_type": "suspicious_process",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 4,
+                  "pass": true,
+                  "event_type": "malware_detected",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 5,
+                  "pass": true,
+                  "event_type": "privilege_escalation",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 6,
+                  "pass": true,
+                  "event_type": "threat_indicator_match",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 7,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 8,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 9,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 10,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 11,
+                  "pass": true,
+                  "event_type": "process_start",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 12,
+                  "pass": true,
+                  "event_type": "process_start",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                }
+              ],
+              "precision": 1.0,
+              "pass_count": 12,
+              "limitations": [
+                "Synthetic, hand-authored cases only",
+                "Rule/heuristic baseline, not a trained ML model",
+                "Do not interpret these scores as production detection quality"
+              ],
+              "sample_count": 12,
+              "dataset_version": "aegis-synthetic-detection-v1",
+              "confusion_matrix": {
+                "fn": 0,
+                "fp": 0,
+                "tn": 4,
+                "tp": 8
+              }
+            },
+            "created_at": "2026-10-23T08:14:40.824613+00:00"
+          },
+          {
+            "id": "3a4b6c07-2cee-4d59-9719-d9c26784e9fe",
+            "suite": "detection-baseline",
+            "metrics": {
+              "f1": 1.0,
+              "recall": 1.0,
+              "accuracy": 1.0,
+              "examples": [
+                {
+                  "case": 1,
+                  "pass": true,
+                  "event_type": "authentication_failure",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 2,
+                  "pass": true,
+                  "event_type": "failed_login",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 3,
+                  "pass": true,
+                  "event_type": "suspicious_process",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 4,
+                  "pass": true,
+                  "event_type": "malware_detected",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 5,
+                  "pass": true,
+                  "event_type": "privilege_escalation",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 6,
+                  "pass": true,
+                  "event_type": "threat_indicator_match",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 7,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 8,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 9,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 10,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": false,
+                  "predicted_detection": false
+                },
+                {
+                  "case": 11,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                },
+                {
+                  "case": 12,
+                  "pass": true,
+                  "event_type": "normal_activity",
+                  "expected_detection": true,
+                  "predicted_detection": true
+                }
+              ],
+              "precision": 1.0,
+              "pass_count": 12,
+              "limitations": [
+                "Synthetic, hand-authored cases only",
+                "Rule/heuristic baseline, not a trained ML model",
+                "Do not interpret these scores as production detection quality"
+              ],
+              "sample_count": 12,
+              "dataset_version": "aegis-synthetic-detection-v1",
+              "confusion_matrix": {
+                "fn": 0,
+                "fp": 0,
+                "tn": 4,
+                "tp": 8
+              }
+            },
+            "created_at": "2026-10-22T07:15:43.336759+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "path": "/api/v1/ml/anomaly/runs",
+      "status": 200,
+      "body": {
+        "items": []
+      }
+    },
+    {
+      "path": "/api/v1/integrations",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "name": "Ollama",
+            "state": "online",
+            "detail": "HTTP 200",
+            "http_status": 200
+          },
+          {
+            "name": "Qdrant",
+            "state": "online",
+            "detail": "HTTP 200",
+            "http_status": 200
+          },
+          {
+            "name": "Kafka",
+            "state": "not_configured",
+            "detail": "Optional integration is not enabled"
+          },
+          {
+            "name": "Neo4j HTTP",
+            "state": "offline",
+            "detail": "URLError"
+          }
+        ],
+        "checked_at": "2026-10-30T09:06:24.299912+00:00",
+        "note": "Runtime connectivity only; reachable does not imply the integration is wired into every workflow."
+      }
+    },
+    {
+      "path": "/api/v1/data/quality",
+      "status": 200,
+      "body": {
+        "event_count": 7,
+        "alert_count": 7,
+        "completeness": {
+          "src_ip_pct": 71.43,
+          "host_pct": 100.0,
+          "username_pct": 100.0
+        },
+        "note": "Completeness is measured from stored events; null means no events exist."
+      }
+    },
+    {
+      "path": "/api/v1/platform/catalog",
+      "status": 200,
+      "body": {
+        "catalog_version": "aegis-platform-catalog-v1.1",
+        "domains": [
+          {
+            "id": "ecommerce",
+            "label": "E-commerce & digital commerce",
+            "event_families": [
+              "account_takeover",
+              "payment_abuse",
+              "promotion_abuse",
+              "checkout_anomaly",
+              "admin_access"
+            ],
+            "sources": [
+              "web application",
+              "identity provider",
+              "payment gateway",
+              "WAF/CDN",
+              "order service"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "entity_resolution"
+            ],
+            "required_context": [
+              "tenant_id",
+              "user_id",
+              "session_id",
+              "order_id",
+              "payment_reference"
+            ]
+          },
+          {
+            "id": "telecom",
+            "label": "Telecommunications",
+            "event_families": [
+              "sim_swap",
+              "subscriber_account_abuse",
+              "signalling_anomaly",
+              "cdr_anomaly",
+              "privileged_network_change"
+            ],
+            "sources": [
+              "AAA/RADIUS",
+              "SIM provisioning",
+              "network management",
+              "CDR pipeline",
+              "identity provider"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "sequence_detection"
+            ],
+            "required_context": [
+              "subscriber_id",
+              "sim_id",
+              "device_id",
+              "network_element",
+              "session_id"
+            ]
+          },
+          {
+            "id": "logistics",
+            "label": "Logistics & supply chain",
+            "event_families": [
+              "shipment_route_deviation",
+              "warehouse_access_abuse",
+              "fleet_device_compromise",
+              "manifest_tampering",
+              "partner_api_abuse"
+            ],
+            "sources": [
+              "fleet telemetry",
+              "warehouse management",
+              "shipment tracking",
+              "partner API gateway",
+              "identity provider"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "entity_resolution"
+            ],
+            "required_context": [
+              "shipment_id",
+              "vehicle_id",
+              "warehouse_id",
+              "partner_id",
+              "device_id"
+            ]
+          },
+          {
+            "id": "cloud_saas",
+            "label": "Cloud & SaaS",
+            "event_families": [
+              "credential_abuse",
+              "privilege_escalation",
+              "public_resource_exposure",
+              "control_plane_anomaly",
+              "data_exfiltration"
+            ],
+            "sources": [
+              "cloud audit logs",
+              "IAM",
+              "Kubernetes audit",
+              "endpoint detection",
+              "SaaS audit API"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "attack_technique_coverage"
+            ],
+            "required_context": [
+              "tenant_id",
+              "principal_id",
+              "resource_id",
+              "cloud_account",
+              "region"
+            ]
+          },
+          {
+            "id": "financial_services",
+            "label": "Financial services",
+            "event_families": [
+              "account_takeover",
+              "transaction_abuse",
+              "privileged_access_abuse",
+              "api_abuse",
+              "sensitive_data_access"
+            ],
+            "sources": [
+              "identity provider",
+              "transaction platform",
+              "API gateway",
+              "database audit",
+              "endpoint detection"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "case_linkage"
+            ],
+            "required_context": [
+              "customer_id_tokenized",
+              "account_id_tokenized",
+              "transaction_id",
+              "session_id",
+              "device_id"
+            ]
+          }
+        ],
+        "capabilities": [
+          {
+            "id": "ingestion",
+            "label": "Event ingestion and normalization",
+            "status": "implemented",
+            "evaluation": [
+              "schema_validity_pct",
+              "duplicate_rate",
+              "ingest_throughput_eps",
+              "p95_ingest_latency_ms"
+            ]
+          },
+          {
+            "id": "rule_detection",
+            "label": "Deterministic rule detection",
+            "status": "implemented",
+            "evaluation": [
+              "precision",
+              "recall",
+              "f1",
+              "false_positive_rate",
+              "rule_coverage_pct"
+            ]
+          },
+          {
+            "id": "streaming",
+            "label": "Kafka streaming",
+            "status": "optional_integration",
+            "evaluation": [
+              "publish_success_pct",
+              "consumer_lag",
+              "retry_count",
+              "dead_letter_count"
+            ]
+          },
+          {
+            "id": "vector_rag",
+            "label": "Vector retrieval and RAG",
+            "status": "implemented_with_local_services",
+            "evaluation": [
+              "recall_at_k",
+              "mrr",
+              "citation_coverage_pct",
+              "unsupported_claim_rate",
+              "p95_retrieval_ms"
+            ]
+          },
+          {
+            "id": "local_llm",
+            "label": "Local LLM investigation",
+            "status": "implemented_with_local_model",
+            "evaluation": [
+              "groundedness",
+              "evidence_relevance",
+              "p95_generation_ms",
+              "refusal_correctness"
+            ]
+          },
+          {
+            "id": "agent_tracing",
+            "label": "Agent run traces",
+            "status": "implemented",
+            "evaluation": [
+              "trace_completeness_pct",
+              "failed_step_rate",
+              "p95_run_duration_ms"
+            ]
+          },
+          {
+            "id": "mcp",
+            "label": "MCP JSON-RPC tool interface",
+            "status": "partial",
+            "evaluation": [
+              "tool_schema_validity_pct",
+              "authorization_denial_tests",
+              "tool_error_rate"
+            ]
+          },
+          {
+            "id": "a2a_acp",
+            "label": "A2A / ACP interoperability",
+            "status": "planned",
+            "evaluation": [
+              "agent_card_conformance_pct",
+              "task_lifecycle_success_pct",
+              "identity_propagation_pct"
+            ]
+          },
+          {
+            "id": "graph",
+            "label": "Graph analytics",
+            "status": "partial",
+            "evaluation": [
+              "entity_resolution_precision",
+              "relationship_precision",
+              "query_p95_ms"
+            ]
+          },
+          {
+            "id": "ml_anomaly_baseline",
+            "label": "Unsupervised anomaly scoring baseline",
+            "status": "experimental",
+            "evaluation": [
+              "top_k_review_yield",
+              "score_stability",
+              "analyst_confirmed_precision",
+              "inference_p95_ms"
+            ]
+          },
+          {
+            "id": "ml_models",
+            "label": "Durable model registry, supervised serving and drift monitoring",
+            "status": "planned",
+            "evaluation": [
+              "pr_auc",
+              "calibration_error",
+              "drift_score",
+              "inference_p95_ms"
+            ]
+          },
+          {
+            "id": "devsecops",
+            "label": "Build, test and supply-chain controls",
+            "status": "partial",
+            "evaluation": [
+              "test_pass_rate",
+              "dependency_vulnerability_count",
+              "image_scan_findings",
+              "deployment_rollback_time"
+            ]
+          }
+        ],
+        "evaluation_principles": [
+          "Evaluate each domain against its own labeled dataset; do not transfer scores across domains.",
+          "Report false positives and false negatives alongside precision and recall.",
+          "Record dataset version, sample count, time window, and model/rule version for each run.",
+          "Planned or partial capabilities must not be presented as operational integrations."
+        ]
+      }
+    },
+    {
+      "path": "/api/v1/platform/studio",
+      "status": 200,
+      "body": {
+        "catalog_version": "aegis-platform-catalog-v1.1",
+        "mode": "admin-domain-studio",
+        "domains": [
+          {
+            "id": "ecommerce",
+            "label": "E-commerce & digital commerce",
+            "event_families": [
+              "account_takeover",
+              "payment_abuse",
+              "promotion_abuse",
+              "checkout_anomaly",
+              "admin_access"
+            ],
+            "sources": [
+              "web application",
+              "identity provider",
+              "payment gateway",
+              "WAF/CDN",
+              "order service"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "entity_resolution"
+            ],
+            "required_context": [
+              "tenant_id",
+              "user_id",
+              "session_id",
+              "order_id",
+              "payment_reference"
+            ],
+            "configuration_status": "catalog_defined",
+            "configuration_note": "This profile describes expected sources and context; it does not configure a live connector.",
+            "evaluation_endpoint": "/api/v1/platform/domains/ecommerce/evaluation",
+            "run_endpoint": "/api/v1/platform/domains/ecommerce/evaluation"
+          },
+          {
+            "id": "telecom",
+            "label": "Telecommunications",
+            "event_families": [
+              "sim_swap",
+              "subscriber_account_abuse",
+              "signalling_anomaly",
+              "cdr_anomaly",
+              "privileged_network_change"
+            ],
+            "sources": [
+              "AAA/RADIUS",
+              "SIM provisioning",
+              "network management",
+              "CDR pipeline",
+              "identity provider"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "sequence_detection"
+            ],
+            "required_context": [
+              "subscriber_id",
+              "sim_id",
+              "device_id",
+              "network_element",
+              "session_id"
+            ],
+            "configuration_status": "catalog_defined",
+            "configuration_note": "This profile describes expected sources and context; it does not configure a live connector.",
+            "evaluation_endpoint": "/api/v1/platform/domains/telecom/evaluation",
+            "run_endpoint": "/api/v1/platform/domains/telecom/evaluation"
+          },
+          {
+            "id": "logistics",
+            "label": "Logistics & supply chain",
+            "event_families": [
+              "shipment_route_deviation",
+              "warehouse_access_abuse",
+              "fleet_device_compromise",
+              "manifest_tampering",
+              "partner_api_abuse"
+            ],
+            "sources": [
+              "fleet telemetry",
+              "warehouse management",
+              "shipment tracking",
+              "partner API gateway",
+              "identity provider"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "entity_resolution"
+            ],
+            "required_context": [
+              "shipment_id",
+              "vehicle_id",
+              "warehouse_id",
+              "partner_id",
+              "device_id"
+            ],
+            "configuration_status": "catalog_defined",
+            "configuration_note": "This profile describes expected sources and context; it does not configure a live connector.",
+            "evaluation_endpoint": "/api/v1/platform/domains/logistics/evaluation",
+            "run_endpoint": "/api/v1/platform/domains/logistics/evaluation"
+          },
+          {
+            "id": "cloud_saas",
+            "label": "Cloud & SaaS",
+            "event_families": [
+              "credential_abuse",
+              "privilege_escalation",
+              "public_resource_exposure",
+              "control_plane_anomaly",
+              "data_exfiltration"
+            ],
+            "sources": [
+              "cloud audit logs",
+              "IAM",
+              "Kubernetes audit",
+              "endpoint detection",
+              "SaaS audit API"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "attack_technique_coverage"
+            ],
+            "required_context": [
+              "tenant_id",
+              "principal_id",
+              "resource_id",
+              "cloud_account",
+              "region"
+            ],
+            "configuration_status": "catalog_defined",
+            "configuration_note": "This profile describes expected sources and context; it does not configure a live connector.",
+            "evaluation_endpoint": "/api/v1/platform/domains/cloud_saas/evaluation",
+            "run_endpoint": "/api/v1/platform/domains/cloud_saas/evaluation"
+          },
+          {
+            "id": "financial_services",
+            "label": "Financial services",
+            "event_families": [
+              "account_takeover",
+              "transaction_abuse",
+              "privileged_access_abuse",
+              "api_abuse",
+              "sensitive_data_access"
+            ],
+            "sources": [
+              "identity provider",
+              "transaction platform",
+              "API gateway",
+              "database audit",
+              "endpoint detection"
+            ],
+            "evaluation_dimensions": [
+              "precision",
+              "recall",
+              "false_positive_rate",
+              "time_to_detect",
+              "case_linkage"
+            ],
+            "required_context": [
+              "customer_id_tokenized",
+              "account_id_tokenized",
+              "transaction_id",
+              "session_id",
+              "device_id"
+            ],
+            "configuration_status": "catalog_defined",
+            "configuration_note": "This profile describes expected sources and context; it does not configure a live connector.",
+            "evaluation_endpoint": "/api/v1/platform/domains/financial_services/evaluation",
+            "run_endpoint": "/api/v1/platform/domains/financial_services/evaluation"
+          }
+        ],
+        "capabilities": [
+          {
+            "id": "ingestion",
+            "label": "Event ingestion and normalization",
+            "status": "implemented",
+            "evaluation": [
+              "schema_validity_pct",
+              "duplicate_rate",
+              "ingest_throughput_eps",
+              "p95_ingest_latency_ms"
+            ]
+          },
+          {
+            "id": "rule_detection",
+            "label": "Deterministic rule detection",
+            "status": "implemented",
+            "evaluation": [
+              "precision",
+              "recall",
+              "f1",
+              "false_positive_rate",
+              "rule_coverage_pct"
+            ]
+          },
+          {
+            "id": "streaming",
+            "label": "Kafka streaming",
+            "status": "optional_integration",
+            "evaluation": [
+              "publish_success_pct",
+              "consumer_lag",
+              "retry_count",
+              "dead_letter_count"
+            ]
+          },
+          {
+            "id": "vector_rag",
+            "label": "Vector retrieval and RAG",
+            "status": "implemented_with_local_services",
+            "evaluation": [
+              "recall_at_k",
+              "mrr",
+              "citation_coverage_pct",
+              "unsupported_claim_rate",
+              "p95_retrieval_ms"
+            ]
+          },
+          {
+            "id": "local_llm",
+            "label": "Local LLM investigation",
+            "status": "implemented_with_local_model",
+            "evaluation": [
+              "groundedness",
+              "evidence_relevance",
+              "p95_generation_ms",
+              "refusal_correctness"
+            ]
+          },
+          {
+            "id": "agent_tracing",
+            "label": "Agent run traces",
+            "status": "implemented",
+            "evaluation": [
+              "trace_completeness_pct",
+              "failed_step_rate",
+              "p95_run_duration_ms"
+            ]
+          },
+          {
+            "id": "mcp",
+            "label": "MCP JSON-RPC tool interface",
+            "status": "partial",
+            "evaluation": [
+              "tool_schema_validity_pct",
+              "authorization_denial_tests",
+              "tool_error_rate"
+            ]
+          },
+          {
+            "id": "a2a_acp",
+            "label": "A2A / ACP interoperability",
+            "status": "planned",
+            "evaluation": [
+              "agent_card_conformance_pct",
+              "task_lifecycle_success_pct",
+              "identity_propagation_pct"
+            ]
+          },
+          {
+            "id": "graph",
+            "label": "Graph analytics",
+            "status": "partial",
+            "evaluation": [
+              "entity_resolution_precision",
+              "relationship_precision",
+              "query_p95_ms"
+            ]
+          },
+          {
+            "id": "ml_anomaly_baseline",
+            "label": "Unsupervised anomaly scoring baseline",
+            "status": "experimental",
+            "evaluation": [
+              "top_k_review_yield",
+              "score_stability",
+              "analyst_confirmed_precision",
+              "inference_p95_ms"
+            ]
+          },
+          {
+            "id": "ml_models",
+            "label": "Durable model registry, supervised serving and drift monitoring",
+            "status": "planned",
+            "evaluation": [
+              "pr_auc",
+              "calibration_error",
+              "drift_score",
+              "inference_p95_ms"
+            ]
+          },
+          {
+            "id": "devsecops",
+            "label": "Build, test and supply-chain controls",
+            "status": "partial",
+            "evaluation": [
+              "test_pass_rate",
+              "dependency_vulnerability_count",
+              "image_scan_findings",
+              "deployment_rollback_time"
+            ]
+          }
+        ],
+        "next_configuration_steps": [
+          "Connect and validate a source adapter before treating its telemetry as live.",
+          "Map source fields to the common event schema and domain context fields.",
+          "Run the domain smoke evaluation, then add representative labeled data before operational use."
+        ]
+      }
+    },
+    {
+      "path": "/api/v1/graph/summary",
+      "status": 200,
+      "body": {
+        "mode": "postgres-derived-graph-lite",
+        "node_count": 10,
+        "edge_count": 10,
+        "nodes": [
+          {
+            "id": "event_type:authentication_failure",
+            "type": "event_type",
+            "label": "authentication_failure"
+          },
+          {
+            "id": "event_type:sim_swap",
+            "type": "event_type",
+            "label": "sim_swap"
+          },
+          {
+            "id": "event_type:subscriber_account_abuse",
+            "type": "event_type",
+            "label": "subscriber_account_abuse"
+          },
+          {
+            "id": "event_type:suspicious_process",
+            "type": "event_type",
+            "label": "suspicious_process"
+          },
+          {
+            "id": "host:aegis-simulation-host",
+            "type": "host",
+            "label": "aegis-simulation-host"
+          },
+          {
+            "id": "host:demo-endpoint-01",
+            "type": "host",
+            "label": "demo-endpoint-01"
+          },
+          {
+            "id": "host:soc-test-endpoint",
+            "type": "host",
+            "label": "soc-test-endpoint"
+          },
+          {
+            "id": "user:aegis-sim-63a15750",
+            "type": "user",
+            "label": "aegis-sim-63a15750"
+          },
+          {
+            "id": "user:aegis-test-user",
+            "type": "user",
+            "label": "aegis-test-user"
+          },
+          {
+            "id": "user:demo-admin",
+            "type": "user",
+            "label": "demo-admin"
+          }
+        ],
+        "edges": [
+          {
+            "source": "event_type:authentication_failure",
+            "target": "host:demo-endpoint-01",
+            "relation": "observed_on",
+            "weight": 3
+          },
+          {
+            "source": "event_type:authentication_failure",
+            "target": "user:demo-admin",
+            "relation": "associated_with",
+            "weight": 3
+          },
+          {
+            "source": "event_type:suspicious_process",
+            "target": "host:demo-endpoint-01",
+            "relation": "observed_on",
+            "weight": 1
+          },
+          {
+            "source": "event_type:suspicious_process",
+            "target": "user:demo-admin",
+            "relation": "associated_with",
+            "weight": 1
+          },
+          {
+            "source": "event_type:subscriber_account_abuse",
+            "target": "host:aegis-simulation-host",
+            "relation": "observed_on",
+            "weight": 1
+          },
+          {
+            "source": "event_type:subscriber_account_abuse",
+            "target": "user:aegis-sim-63a15750",
+            "relation": "associated_with",
+            "weight": 1
+          },
+          {
+            "source": "event_type:authentication_failure",
+            "target": "host:soc-test-endpoint",
+            "relation": "observed_on",
+            "weight": 1
+          },
+          {
+            "source": "event_type:authentication_failure",
+            "target": "user:aegis-test-user",
+            "relation": "associated_with",
+            "weight": 1
+          },
+          {
+            "source": "event_type:sim_swap",
+            "target": "host:aegis-simulation-host",
+            "relation": "observed_on",
+            "weight": 1
+          },
+          {
+            "source": "event_type:sim_swap",
+            "target": "user:aegis-sim-63a15750",
+            "relation": "associated_with",
+            "weight": 1
+          }
+        ],
+        "note": "Derived event associations only; this endpoint does not query Neo4j or infer causality."
+      }
+    },
+    {
+      "path": "/api/v1/mcp/tools",
+      "status": 200,
+      "body": {
+        "protocol": "AEGIS internal tool catalog v1",
+        "tools": [
+          {
+            "name": "search_alerts",
+            "description": "Search recent alerts",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "limit": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "name": "search_knowledge",
+            "description": "Search stored SOC documents",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "q": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "name": "get_overview",
+            "description": "Get SOC counters",
+            "inputSchema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          {
+            "name": "get_graph_summary",
+            "description": "Get derived event relationship summary",
+            "inputSchema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          {
+            "name": "get_data_quality",
+            "description": "Get event-field completeness metrics",
+            "inputSchema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          {
+            "name": "run_detection_evaluation",
+            "description": "Run the versioned synthetic detection benchmark",
+            "inputSchema": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        ],
+        "note": "This is an HTTP tool catalog, not a full MCP transport server."
+      }
+    },
+    {
+      "path": "/api/v1/audit",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": 34,
+            "action": "case.created",
+            "entity_type": "case",
+            "entity_id": "00485911-1f24-4bbe-96bf-2662902ea651",
+            "details": {
+              "alert_ids": []
+            },
+            "created_at": "2026-10-26T05:08:19.858218+00:00"
+          },
+          {
+            "id": 33,
+            "action": "correlation.simulation.completed",
+            "entity_type": "correlation_scenario",
+            "entity_id": "63a15750-a4a5-41a3-9827-f4348eaf638d",
+            "details": {
+              "domain": "telecom",
+              "rule_id": "CORR-TEL-001",
+              "event_ids": [
+                "6e095d2a-9aa2-4b43-8831-833212ee4646",
+                "6c1b6f61-2fc1-4f43-ac97-fd960fa6769c"
+              ],
+              "scenario_id": "63a15750-a4a5-41a3-9827-f4348eaf638d"
+            },
+            "created_at": "2026-10-26T05:06:09.063213+00:00"
+          },
+          {
+            "id": 32,
+            "action": "event.ingested",
+            "entity_type": "event",
+            "entity_id": "6c1b6f61-2fc1-4f43-ac97-fd960fa6769c",
+            "details": {
+              "event_type": "subscriber_account_abuse",
+              "alert_count": 1,
+              "indicator_match": false
+            },
+            "created_at": "2026-10-26T05:06:09.025563+00:00"
+          },
+          {
+            "id": 31,
+            "action": "event.ingested",
+            "entity_type": "event",
+            "entity_id": "6e095d2a-9aa2-4b43-8831-833212ee4646",
+            "details": {
+              "event_type": "sim_swap",
+              "alert_count": 1,
+              "indicator_match": false
+            },
+            "created_at": "2026-10-26T05:06:09.025563+00:00"
+          },
+          {
+            "id": 30,
+            "action": "evaluation.completed",
+            "entity_type": "evaluation",
+            "entity_id": "d74e3abf-067f-4387-ae19-e45313fd1851",
+            "details": {
+              "f1": 1.0,
+              "suite": "domain-detection-ecommerce",
+              "sample_count": 3,
+              "dataset_version": "aegis-ecommerce-smoke-v1"
+            },
+            "created_at": "2026-10-23T09:58:29.514624+00:00"
+          },
+          {
+            "id": 29,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "2dc92109-635d-4be5-b37c-e069c28e2012",
+            "details": {
+              "mode": "local-ollama",
+              "duration_ms": 13335,
+              "evidence_count": 2,
+              "retrieval_mode": "qdrant-vector"
+            },
+            "created_at": "2026-10-23T08:56:52.954830+00:00"
+          },
+          {
+            "id": 28,
+            "action": "evaluation.completed",
+            "entity_type": "evaluation",
+            "entity_id": "22222e58-ac55-4b3d-8ec4-8b204caef64d",
+            "details": {
+              "f1": 1.0,
+              "suite": "detection-baseline",
+              "sample_count": 12
+            },
+            "created_at": "2026-10-23T08:54:34.906351+00:00"
+          },
+          {
+            "id": 27,
+            "action": "evaluation.completed",
+            "entity_type": "evaluation",
+            "entity_id": "b120bca7-984b-44f7-b597-279a063b05f5",
+            "details": {
+              "f1": 1.0,
+              "suite": "detection-baseline",
+              "sample_count": 12
+            },
+            "created_at": "2026-10-23T08:14:40.824613+00:00"
+          },
+          {
+            "id": 26,
+            "action": "investigation.run",
+            "entity_type": "alert",
+            "entity_id": "0da790d2-940d-4b49-b460-dc4a18edc632",
+            "details": {
+              "mode": "local-ollama",
+              "duration_ms": 20812,
+              "evidence_count": 2,
+              "retrieval_mode": "qdrant-vector"
+            },
+            "created_at": "2026-10-23T06:48:17.762066+00:00"
+          },
+          {
+            "id": 25,
+            "action": "case.updated",
+            "entity_type": "case",
+            "entity_id": "d621c23e-1226-4641-8d9d-31af7e5f9792",
+            "details": {
+              "note": "Pre-commit verification: synthetic AUTH-001 alert reviewed.",
+              "status": "in_progress",
+              "assignee": "soc-verification"
+            },
+            "created_at": "2026-10-23T06:07:10.704642+00:00"
+          },
+          {
+            "id": 24,
+            "action": "case.created",
+            "entity_type": "case",
+            "entity_id": "d621c23e-1226-4641-8d9d-31af7e5f9792",
+            "details": {
+              "alert_ids": [
+                "0da790d2-940d-4bff-90e0-cd4a18edc632"
+              ]
+            },
+            "created_at": "2026-10-23T05:07:21.992335+00:00"
+          },
+          {
+            "id": 23,
+            "action": "event.ingested",
+            "entity_type": "event",
+            "entity_id": "f14f78a8-6e60-4552-8844-086385c364da",
+            "details": {
+              "event_type": "authentication_failure",
+              "alert_count": 1,
+              "indicator_match": false
+            },
+            "created_at": "2026-10-23T05:03:32.355773+00:00"
+          },
+          {
+            "id": 22,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "ad44bae2-75aa-496c-a7d3-a86541839668",
+            "details": {
+              "mode": "local-ollama",
+              "duration_ms": 20003,
+              "evidence_count": 1,
+              "retrieval_mode": "keyword-fallback"
+            },
+            "created_at": "2026-10-22T12:35:33.525238+00:00"
+          },
+          {
+            "id": 21,
+            "action": "knowledge.document_added",
+            "entity_type": "document",
+            "entity_id": "e060d817-2c8e-41d1-a390-312d1ba313f7",
+            "details": {
+              "title": "Privileged account authentication failures runbook"
+            },
+            "created_at": "2026-10-22T10:21:52.239769+00:00"
+          },
+          {
+            "id": 20,
+            "action": "case.created",
+            "entity_type": "case",
+            "entity_id": "cf96b697-0ae8-44ca-b421-462015d69a04",
+            "details": {
+              "alert_ids": [
+                "f1034a86-7989-4bff-90e0-c6a26c21b6b5"
+              ]
+            },
+            "created_at": "2026-10-22T08:51:43.559170+00:00"
+          },
+          {
+            "id": 19,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "8c7d3cdc-a1e6-4d16-91a7-420200038213",
+            "details": {
+              "mode": "evidence-based-baseline",
+              "duration_ms": 15,
+              "evidence_count": 0
+            },
+            "created_at": "2026-10-22T08:51:03.050447+00:00"
+          },
+          {
+            "id": 18,
+            "action": "event.ingested",
+            "entity_type": "event",
+            "entity_id": "c4aabee3-95ea-4c19-be9c-b07ba3f49242",
+            "details": {
+              "event_type": "suspicious_process",
+              "alert_count": 1,
+              "indicator_match": false
+            },
+            "created_at": "2026-10-22T08:49:35.380246+00:00"
+          },
+          {
+            "id": 17,
+            "action": "mcp.tool_called",
+            "entity_type": "tool",
+            "entity_id": "get_overview",
+            "details": {
+              "argument_keys": []
+            },
+            "created_at": "2026-10-22T08:45:32.773944+00:00"
+          },
+          {
+            "id": 16,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "107cc5fc-de39-4314-969a-28c21ddd3791",
+            "details": {
+              "mode": "evidence-based-baseline",
+              "duration_ms": 16,
+              "evidence_count": 0
+            },
+            "created_at": "2026-10-22T07:25:20.277135+00:00"
+          },
+          {
+            "id": 15,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "f87e12f2-ac51-4e78-af98-cbf079361932",
+            "details": {
+              "mode": "evidence-based-baseline",
+              "duration_ms": 18,
+              "evidence_count": 0
+            },
+            "created_at": "2026-10-22T07:24:48.879313+00:00"
+          },
+          {
+            "id": 14,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "981cdb48-13b4-4c99-a5c3-57062ffdaab3",
+            "details": {
+              "mode": "evidence-based-baseline",
+              "duration_ms": 30,
+              "evidence_count": 0
+            },
+            "created_at": "2026-10-22T07:19:43.796895+00:00"
+          },
+          {
+            "id": 13,
+            "action": "case.created",
+            "entity_type": "case",
+            "entity_id": "6443957d-eac4-4e22-a843-b7537ebad79b",
+            "details": {
+              "alert_ids": [
+                "1301c986-4988-4e47-b7c0-81319edc45a2"
+              ]
+            },
+            "created_at": "2026-10-22T07:19:00.674872+00:00"
+          },
+          {
+            "id": 12,
+            "action": "event.ingested",
+            "entity_type": "event",
+            "entity_id": "d125a340-a970-4302-92aa-e64685dbd572",
+            "details": {
+              "event_type": "authentication_failure",
+              "alert_count": 1,
+              "indicator_match": false
+            },
+            "created_at": "2026-10-22T07:18:51.321175+00:00"
+          },
+          {
+            "id": 11,
+            "action": "evaluation.completed",
+            "entity_type": "evaluation",
+            "entity_id": "3a4b6c07-2cee-4d59-9719-d9c26784e9fe",
+            "details": {
+              "f1": 1.0,
+              "suite": "detection-baseline",
+              "sample_count": 12
+            },
+            "created_at": "2026-10-22T07:15:43.336759+00:00"
+          },
+          {
+            "id": 10,
+            "action": "knowledge.document_added",
+            "entity_type": "document",
+            "entity_id": "74723cf9-db16-4cdc-a7e5-888b98729b00",
+            "details": {
+              "title": "test1"
+            },
+            "created_at": "2026-10-21T09:33:55.117396+00:00"
+          },
+          {
+            "id": 9,
+            "action": "intel.indicator_added",
+            "entity_type": "indicator",
+            "entity_id": "6189e89b-e217-4a58-8838-51c22e8e71b5",
+            "details": {
+              "type": "ip",
+              "value": "198.23.45.21"
+            },
+            "created_at": "2026-10-21T09:32:31.857111+00:00"
+          },
+          {
+            "id": 8,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "78c02334-7093-4392-b3a1-deef9938fb75",
+            "details": {
+              "mode": "evidence-based-baseline"
+            },
+            "created_at": "2026-10-21T09:28:36.265344+00:00"
+          },
+          {
+            "id": 7,
+            "action": "case.created",
+            "entity_type": "case",
+            "entity_id": "8dfe6a61-7b54-474a-a607-c549efd0569c",
+            "details": {
+              "alert_ids": [
+                "f918a7d4-66fb-4217-8f8b-c39f238aaa40"
+              ]
+            },
+            "created_at": "2026-10-21T09:22:02.427637+00:00"
+          },
+          {
+            "id": 6,
+            "action": "event.ingested",
+            "entity_type": "event",
+            "entity_id": "d60c595e-24bb-4462-9c40-a12a9a83507c",
+            "details": {
+              "event_type": "authentication_failure",
+              "alert_count": 1,
+              "indicator_match": false
+            },
+            "created_at": "2026-10-21T09:20:26.911867+00:00"
+          },
+          {
+            "id": 5,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "94ba68a3-3e07-42e9-ab90-473f632ed2e9",
+            "details": {
+              "mode": "evidence-based-baseline"
+            },
+            "created_at": "2026-10-21T08:57:19.903547+00:00"
+          },
+          {
+            "id": 4,
+            "action": "investigation.run",
+            "entity_type": "query",
+            "entity_id": "6f71fcc0-7f89-4c31-a040-5313a0165f8d",
+            "details": {
+              "mode": "evidence-based-baseline"
+            },
+            "created_at": "2026-10-10T13:13:55.890077+00:00"
+          },
+          {
+            "id": 3,
+            "action": "case.created",
+            "entity_type": "case",
+            "entity_id": "d865ef6d-e266-46be-8954-1425dd11da51",
+            "details": {
+              "alert_ids": [
+                "a4980335-e66e-4cd6-908f-32b948e658ac"
+              ]
+            },
+            "created_at": "2026-10-10T13:13:46.153741+00:00"
+          },
+          {
+            "id": 2,
+            "action": "case.created",
+            "entity_type": "case",
+            "entity_id": "d9f1292f-d86d-444a-bcf3-1fd0788aa25e",
+            "details": {
+              "alert_ids": [
+                "a4980335-e66e-4cd6-908f-32b948e658ac"
+              ]
+            },
+            "created_at": "2026-10-10T13:13:24.133656+00:00"
+          },
+          {
+            "id": 1,
+            "action": "event.ingested",
+            "entity_type": "event",
+            "entity_id": "3fdc1522-7902-4294-bf34-a816c1bb11a6",
+            "details": {
+              "event_type": "authentication_failure",
+              "alert_count": 1,
+              "indicator_match": false
+            },
+            "created_at": "2026-10-10T13:12:32.406025+00:00"
+          }
+        ]
+      }
+    }
+  ]
+}

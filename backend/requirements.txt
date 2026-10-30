@@ -6,3 +6,4 @@ pydantic-settings>=2.7,<3.0
 pytest>=8.3,<9.0
 httpx>=0.28,<1.0
 kafka-python>=2.0.2,<3.0
+scikit-learn>=1.5,<2.0

@@ -1,66 +1,165 @@
-# Environment / secrets
+# =========================================================
+# ENVIRONMENT VARIABLES / SECRETS
+# =========================================================
 .env
 .env.*
 !.env.example
+!.env.template
 
-# Python
+# Secret and credential files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+secrets/
+credentials/
+*.secret
+
+# =========================================================
+# PYTHON
+# =========================================================
 .venv/
 venv/
+env/
+ENV/
 __pycache__/
 *.py[cod]
+*$py.class
+
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.pytype/
+.pyre/
 .coverage
+.coverage.*
 htmlcov/
+.tox/
+.nox/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+wheels/
+site-packages/
 
-# Node / frontend
+# Jupyter
+.ipynb_checkpoints/
+
+# =========================================================
+# NODE / FRONTEND
+# =========================================================
 node_modules/
 dist/
 build/
 .angular/
 coverage/
-tsconfig.tsbuildinfo
+.nyc_output/
+*.tsbuildinfo
 
-# IDE / OS
+# Package manager / tool caches
+.npm/
+.pnpm-store/
+.yarn/
+.eslintcache
+.stylelintcache
+.vite/
+
+# =========================================================
+# IDE / EDITORS / OS
+# =========================================================
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 .DS_Store
+.AppleDouble
+.LSOverride
 Thumbs.db
+Desktop.ini
 
-# Logs / runtime
+# =========================================================
+# LOGS / RUNTIME
+# =========================================================
 *.log
 logs/
+*.pid
+*.sock
+*.lock.pid
 
-# Local data / models / caches
-models/
-mlruns/
+# =========================================================
+# LOCAL DATABASE / RUNTIME DATA
+# =========================================================
 data/runtime/
 data/generated/
 data/cache/
 docker-data/
 volumes/
+postgres-data/
+redis-data/
+qdrant-data/
+neo4j-data/
+clickhouse-data/
+minio-data/
 
-# Certificates / keys
-*.pem
-*.key
-*.crt
+# =========================================================
+# AI / ML MODELS AND GENERATED ARTIFACTS
+# =========================================================
+models/
+model-cache/
+mlruns/
+wandb/
+checkpoints/
+*.onnx
+*.pt
+*.pth
+*.safetensors
+*.gguf
 
-# Patch / temporary files
+# Ollama local model data
+ollama-data/
+
+# Vector / embedding caches
+vector-cache/
+embedding-cache/
+
+# =========================================================
+# DOCKER / KUBERNETES LOCAL OVERRIDES
+# =========================================================
+docker-compose.override.yml
+docker-compose.*.override.yml
+*.local.yaml
+*.local.yml
+
+# =========================================================
+# TEST / BROWSER OUTPUTS
+# =========================================================
+playwright-report/
+test-results/
+.pytest_cache/
+.nox/
+
+# =========================================================
+# TEMPORARY / PATCH FILES
+# =========================================================
 *.patch
 *.rej
 *.orig
 *.tmp
-
-# Local test artifacts
-playwright-report/
-test-results/
-
-# Linux runtime and Docker
-*.pid
-*.sock
+*.temp
+*.bak
 .cache/
 .cache-*/
 .tmp/
 tmp/
 .envrc
+
+# =========================================================
+# LOCAL OS / EDITOR RUNTIME
+# =========================================================
+.Trash-*
+.nfs*

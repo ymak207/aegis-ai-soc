@@ -1,0 +1,3 @@
+timestamp,activity,level,source_address,actor,hostname,description,test_run
+2026-10-30T09:02:01Z,suspicious_process,high,192.0.2.30,acceptance-endpoint-user,acceptance-ws-01,AEGIS-ACCEPTANCE-PACK-02: controlled suspicious process test,AEGIS-ACCEPTANCE-PACK-02
+2026-10-30T09:02:02Z,normal_activity,informational,192.0.2.31,acceptance-standard-user,acceptance-ws-02,AEGIS-ACCEPTANCE-PACK-02: controlled CSV benign test,AEGIS-ACCEPTANCE-PACK-02

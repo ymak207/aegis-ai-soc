@@ -373,3 +373,55 @@ def test_oversized_content_length_is_rejected_before_route_execution(monkeypatch
     )
     assert response.status_code == 413
     assert "exceeds configured limit" in response.json()["detail"]
+
+
+# Release 0.3 source onboarding and controlled Lab contract tests.
+def test_lab_catalog_covers_all_five_domains_and_correlation_sequences():
+    response = client.get("/api/v1/lab/scenarios")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body["domains"]) == {"ecommerce", "telecom", "logistics", "cloud_saas", "financial_services"}
+    assert body["scenario_count"] == len(body["items"])
+    assert all(any(item["domain"] == domain for item in body["items"]) for domain in body["domains"])
+    assert all(any(item["domain"] == domain and "correlation_sequence" in item["id"] for item in body["items"]) for domain in body["domains"])
+    assert body["limitations"]
+
+
+def test_source_import_mapping_uses_source_fields_without_losing_raw_evidence():
+    from app.main import _map_import_record
+    result = _map_import_record(
+        {"ts": "2026-10-27T08:00:00Z", "kind": "authentication_failure", "ip": "198.51.100.8", "detail": "failed login", "extra": "preserved"},
+        {"event_time": "ts", "event_type": "kind", "src_ip": "ip", "message": "detail"},
+        "test-source", "cloud_saas",
+    )
+    assert result["event_time"] == "2026-10-27T08:00:00Z"
+    assert result["event_type"] == "authentication_failure"
+    assert result["src_ip"] == "198.51.100.8"
+    assert result["raw"]["extra"] == "preserved"
+
+
+def test_source_config_rejects_embedded_secrets():
+    from fastapi import HTTPException
+    from app.main import _safe_source_config
+    try:
+        _safe_source_config({"api_key": "not-a-real-key"})
+        assert False, "secret-bearing config must be rejected"
+    except HTTPException as exc:
+        assert exc.status_code == 422
+
+
+def test_source_config_accepts_non_secret_metadata():
+    from app.main import _safe_source_config
+    assert _safe_source_config({"description": "client import", "region": "lab"})["region"] == "lab"
+
+
+def test_anomaly_feature_extraction_is_bounded_and_domain_aware():
+    from app.main import anomaly_feature_row
+    row = anomaly_feature_row({"event_time": "2026-10-27T08:00:00Z", "source": "lab", "event_type": "authentication_failure",
+        "severity": "high", "src_ip": "198.51.100.23", "username": "demo", "host": "host-1",
+        "raw": {"_aegis_domain": "cloud_saas"}})
+    assert row["event_type"] == "authentication_failure"
+    assert row["domain"] == "cloud_saas"
+    assert row["src_ip_prefix"] == "198.51.100"
+    assert row["has_username"] is True
+    assert row["hour_utc"] == 8.0

@@ -1,0 +1,411 @@
+{
+  "api": {
+    "title": "AEGIS AI SOC API",
+    "description": "Self-hosted security event, detection, case and AI-assisted investigation platform.",
+    "version": "0.3.0"
+  },
+  "operations": [
+    {
+      "path": "/api/v1/events",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "event_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Time"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Source",
+            "default": "manual"
+          },
+          "event_type": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Event Type"
+          },
+          "domain": {
+            "type": "string",
+            "pattern": "^(ecommerce|telecom|logistics|cloud_saas|financial_services)$",
+            "title": "Domain",
+            "default": "cloud_saas"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity",
+            "default": "medium"
+          },
+          "src_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Src Ip"
+          },
+          "dst_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dst Ip"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "raw": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Raw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_type",
+          "message"
+        ],
+        "title": "EventIn"
+      }
+    },
+    {
+      "path": "/api/v1/events/batch",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventIn"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "title": "EventBatch"
+      }
+    },
+    {
+      "path": "/api/v1/lab/run",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "pattern": "^(ecommerce|telecom|logistics|cloud_saas|financial_services|all)$",
+            "title": "Domain"
+          },
+          "scenario": {
+            "type": "string",
+            "pattern": "^(domain_smoke|benign_baseline|mixed_suite|all)$",
+            "title": "Scenario",
+            "default": "domain_smoke"
+          },
+          "scale": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Scale",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "domain"
+        ],
+        "title": "LabRunIn"
+      }
+    },
+    {
+      "path": "/api/v1/sources",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "source_type": {
+            "type": "string",
+            "pattern": "^(file_import|webhook|rest_api|syslog|kafka|manual)$",
+            "title": "Source Type"
+          },
+          "domain": {
+            "type": "string",
+            "pattern": "^(ecommerce|telecom|logistics|cloud_saas|financial_services)$",
+            "title": "Domain"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "source_type",
+          "domain"
+        ],
+        "title": "SourceIn"
+      }
+    },
+    {
+      "path": "/api/v1/sources/import",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "source_name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Source Name"
+          },
+          "domain": {
+            "type": "string",
+            "pattern": "^(ecommerce|telecom|logistics|cloud_saas|financial_services)$",
+            "title": "Domain"
+          },
+          "format": {
+            "type": "string",
+            "pattern": "^(json|jsonl|ndjson|csv|text|syslog)$",
+            "title": "Format"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 5000000,
+            "minLength": 1,
+            "title": "Content"
+          },
+          "mapping": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Mapping"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_name",
+          "domain",
+          "format",
+          "content"
+        ],
+        "title": "ImportIn"
+      }
+    },
+    {
+      "path": "/api/v1/investigations",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 3,
+            "title": "Question"
+          },
+          "alert_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "InvestigateIn"
+      }
+    },
+    {
+      "path": "/api/v1/cases",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 250,
+            "minLength": 3,
+            "title": "Title"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity",
+            "default": "medium"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Description",
+            "default": ""
+          },
+          "alert_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Alert Ids"
+          },
+          "assignee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "CaseIn"
+      }
+    },
+    {
+      "path": "/api/v1/intel/indicators",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "indicator_type": {
+            "type": "string",
+            "pattern": "^(ip|domain|hash|url)$",
+            "title": "Indicator Type"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Value"
+          },
+          "confidence": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "default": 50
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Source",
+            "default": "manual"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "indicator_type",
+          "value"
+        ],
+        "title": "IndicatorIn"
+      }
+    },
+    {
+      "path": "/api/v1/knowledge/documents",
+      "method": "POST",
+      "content_type": "application/json",
+      "schema": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 250,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 20,
+            "title": "Content"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Source",
+            "default": "manual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "content"
+        ],
+        "title": "DocumentIn"
+      }
+    }
+  ]
+}

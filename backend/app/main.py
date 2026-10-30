@@ -6,6 +6,8 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from io import StringIO
+import csv
 
 import psycopg
 from psycopg.types.json import Jsonb
@@ -17,7 +19,7 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(
     title="AEGIS AI SOC API",
-    version="0.2.1",
+    version="0.3.0",
     description="Self-hosted security event, detection, case and AI-assisted investigation platform.",
 )
 app.add_middleware(
@@ -119,6 +121,24 @@ CREATE TABLE IF NOT EXISTS agent_runs (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_agent_runs_created ON agent_runs(created_at DESC);
+CREATE TABLE IF NOT EXISTS sources (
+ id TEXT PRIMARY KEY, name TEXT NOT NULL, source_type TEXT NOT NULL,
+ domain TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'configured',
+ config JSONB NOT NULL DEFAULT '{}'::jsonb, last_seen_at TIMESTAMPTZ,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_sources_updated ON sources(updated_at DESC);
+CREATE TABLE IF NOT EXISTS lab_runs (
+ id TEXT PRIMARY KEY, scenario_id TEXT NOT NULL, domain TEXT NOT NULL,
+ status TEXT NOT NULL, report JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_lab_runs_created ON lab_runs(created_at DESC);
+CREATE TABLE IF NOT EXISTS ml_runs (
+ id TEXT PRIMARY KEY, model_name TEXT NOT NULL, model_version TEXT NOT NULL,
+ sample_count INTEGER NOT NULL, report JSONB NOT NULL,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_ml_runs_created ON ml_runs(created_at DESC);
 CREATE TABLE IF NOT EXISTS audit_log (
  id BIGSERIAL PRIMARY KEY, action TEXT NOT NULL, entity_type TEXT NOT NULL,
  entity_id TEXT NOT NULL, details JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -199,7 +219,9 @@ PLATFORM_CAPABILITY_CATALOG = [
      "evaluation": ["agent_card_conformance_pct", "task_lifecycle_success_pct", "identity_propagation_pct"]},
     {"id": "graph", "label": "Graph analytics", "status": "partial",
      "evaluation": ["entity_resolution_precision", "relationship_precision", "query_p95_ms"]},
-    {"id": "ml_models", "label": "Trained ML model registry and serving", "status": "planned",
+    {"id": "ml_anomaly_baseline", "label": "Unsupervised anomaly scoring baseline", "status": "experimental",
+     "evaluation": ["top_k_review_yield", "score_stability", "analyst_confirmed_precision", "inference_p95_ms"]},
+    {"id": "ml_models", "label": "Durable model registry, supervised serving and drift monitoring", "status": "planned",
      "evaluation": ["pr_auc", "calibration_error", "drift_score", "inference_p95_ms"]},
     {"id": "devsecops", "label": "Build, test and supply-chain controls", "status": "partial",
      "evaluation": ["test_pass_rate", "dependency_vulnerability_count", "image_scan_findings", "deployment_rollback_time"]},
@@ -248,6 +270,28 @@ class DocumentIn(BaseModel):
 class InvestigateIn(BaseModel):
     question: str = Field(min_length=3, max_length=4000)
     alert_id: str | None = None
+
+
+class SourceIn(BaseModel):
+    name: str = Field(min_length=2, max_length=160)
+    source_type: str = Field(pattern="^(file_import|webhook|rest_api|syslog|kafka|manual)$")
+    domain: str = Field(pattern="^(ecommerce|telecom|logistics|cloud_saas|financial_services)$")
+    config: dict[str, Any] = Field(default_factory=dict)
+
+class SourceUpdate(BaseModel):
+    status: str = Field(pattern="^(configured|validating|connected|ingesting|degraded|disconnected)$")
+
+class ImportIn(BaseModel):
+    source_name: str = Field(min_length=2, max_length=160)
+    domain: str = Field(pattern="^(ecommerce|telecom|logistics|cloud_saas|financial_services)$")
+    format: str = Field(pattern="^(json|jsonl|ndjson|csv|text|syslog)$")
+    content: str = Field(min_length=1, max_length=5_000_000)
+    mapping: dict[str, str] = Field(default_factory=dict)
+
+class LabRunIn(BaseModel):
+    domain: str = Field(pattern="^(ecommerce|telecom|logistics|cloud_saas|financial_services|all)$")
+    scenario: str = Field(default="domain_smoke", pattern="^(domain_smoke|benign_baseline|mixed_suite|all)$")
+    scale: int = Field(default=1, ge=1, le=20)
 
 def connect():
     # Pass credentials separately; URL concatenation breaks with reserved password characters.
@@ -439,13 +483,13 @@ def system_info():
             "utc_time": datetime.now(timezone.utc).isoformat(),
             "capabilities": ["event-ingestion", "rule-based-detection", "alert-management", "case-management",
                              "threat-intelligence", "audit-trail", "knowledge-retrieval", "local-llm-investigation",
-                             "mcp-json-rpc-tools", "integration-health-probes", "metrics", "baseline-evaluation", "agent-run-traces", "data-quality", "graph-lite", "domain-aware-detection", "domain-evaluation-smoke-tests"]}
+                             "mcp-json-rpc-tools", "integration-health-probes", "metrics", "baseline-evaluation", "agent-run-traces", "data-quality", "graph-lite", "domain-aware-detection", "domain-evaluation-smoke-tests", "source-registry", "file-import-json-jsonl-csv-text", "scenario-lab", "lab-data-export", "isolation-forest-anomaly-baseline"]}
 
 @app.get("/api/v1/platform/catalog")
 def platform_catalog():
     """Return domain coverage contracts and honest implementation/evaluation status."""
     return {
-        "catalog_version": "aegis-platform-catalog-v1",
+        "catalog_version": "aegis-platform-catalog-v1.1",
         "domains": [{"id": key, **value} for key, value in DOMAIN_CATALOG.items()],
         "capabilities": PLATFORM_CAPABILITY_CATALOG,
         "evaluation_principles": [
@@ -802,7 +846,7 @@ def score_domain_dataset(domain: str, dataset: list[dict]) -> dict:
 def platform_studio():
     """Admin-oriented domain studio manifest; exposes configured coverage without claiming integrations are live."""
     return {
-        "catalog_version": "aegis-platform-catalog-v1",
+        "catalog_version": "aegis-platform-catalog-v1.1",
         "mode": "admin-domain-studio",
         "domains": [
             {
@@ -1172,6 +1216,347 @@ def mcp_json_rpc(payload: dict):
     if method.startswith("notifications/"):
         return {"jsonrpc": "2.0", "id": request_id, "result": {}}
     return error(-32601, "Method not found")
+
+
+def anomaly_feature_row(event: dict) -> dict[str, Any]:
+    """Convert a normalized event into bounded categorical/numeric features."""
+    raw = event.get("raw") or {}
+    when = event.get("event_time")
+    if isinstance(when, str):
+        try:
+            when = datetime.fromisoformat(when.replace("Z", "+00:00"))
+        except ValueError:
+            when = None
+    if not isinstance(when, datetime):
+        when = datetime.now(timezone.utc)
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    ip = str(event.get("src_ip") or "")
+    ip_prefix = ".".join(ip.split(".")[:3]) if re.fullmatch(r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}", ip) else "unknown"
+    return {
+        "event_type": str(event.get("event_type") or "unknown"),
+        "source": str(event.get("source") or "unknown"),
+        "severity": str(event.get("severity") or "unknown"),
+        "domain": str(raw.get("_aegis_domain") or event.get("domain") or "unknown"),
+        "src_ip_prefix": ip_prefix,
+        "has_username": bool(event.get("username")),
+        "has_host": bool(event.get("host")),
+        "hour_utc": float(when.hour),
+        "weekday_utc": float(when.weekday()),
+    }
+
+
+# Source onboarding and Lab share the same normalized ingestion path. Source
+# credentials are deliberately not accepted in config; use secret references in
+# deployment tooling rather than storing raw credentials in this registry.
+SUPPORTED_SOURCE_TYPES = {
+    "file_import": "File import (JSON, JSONL, CSV)",
+    "webhook": "HTTP webhook (connector endpoint required)",
+    "rest_api": "REST API pull (connector and credentials required)",
+    "syslog": "Syslog (listener/collector required)",
+    "kafka": "Kafka topic (streaming profile and consumer required)",
+    "manual": "Manual / analyst generated",
+}
+
+LAB_SCENARIOS = {
+    "ecommerce": [
+        ("account_takeover", "Suspicious account takeover sequence"),
+        ("payment_abuse", "Payment abuse signal"),
+        ("promotion_abuse", "Promotion abuse signal"),
+        ("checkout_anomaly", "Checkout anomaly"),
+        ("admin_access", "Privileged commerce administration"),
+    ],
+    "telecom": [
+        ("sim_swap", "SIM provisioning change"),
+        ("subscriber_account_abuse", "Subscriber account abuse"),
+        ("signalling_anomaly", "Signalling anomaly"),
+        ("cdr_anomaly", "Call detail record anomaly"),
+        ("privileged_network_change", "Privileged network change"),
+    ],
+    "logistics": [
+        ("shipment_route_deviation", "Shipment route deviation"),
+        ("warehouse_access_abuse", "Warehouse access abuse"),
+        ("fleet_device_compromise", "Fleet device compromise"),
+        ("manifest_tampering", "Manifest tampering"),
+        ("partner_api_abuse", "Partner API abuse"),
+    ],
+    "cloud_saas": [
+        ("credential_abuse", "Cloud credential abuse"),
+        ("privilege_escalation", "Cloud privilege escalation"),
+        ("public_resource_exposure", "Public resource exposure"),
+        ("control_plane_anomaly", "Control-plane anomaly"),
+        ("data_exfiltration", "Potential data exfiltration"),
+    ],
+    "financial_services": [
+        ("account_takeover", "Financial account takeover"),
+        ("transaction_abuse", "Transaction abuse signal"),
+        ("privileged_access_abuse", "Privileged access abuse"),
+        ("api_abuse", "Financial API abuse"),
+        ("sensitive_data_access", "Sensitive data access"),
+    ],
+}
+
+
+def _safe_source_config(config: dict[str, Any]) -> dict[str, Any]:
+    forbidden = {"password", "secret", "token", "api_key", "authorization", "private_key", "credential"}
+    keys = {str(k).lower() for k in config}
+    if any(any(part in key for part in forbidden) for key in keys):
+        raise HTTPException(status_code=422, detail="Do not store credentials in source config; configure secret references outside AEGIS.")
+    if len(json.dumps(config, default=str)) > 20000:
+        raise HTTPException(status_code=413, detail="Source config exceeds 20 KB")
+    return config
+
+
+@app.get("/api/v1/sources")
+def list_sources(limit: int = Query(default=100, ge=1, le=500)):
+    with connect() as conn:
+        rows = conn.execute("SELECT id,name,source_type,domain,status,config,last_seen_at,created_at,updated_at FROM sources ORDER BY updated_at DESC LIMIT %s", (limit,)).fetchall()
+    return {"items": [{"id": r[0], "name": r[1], "source_type": r[2], "domain": r[3], "status": r[4], "config": r[5], "last_seen_at": r[6], "created_at": r[7], "updated_at": r[8], "connection_mode": "implemented" if r[2] in ("file_import", "manual") else "adapter_required"} for r in rows], "supported_types": SUPPORTED_SOURCE_TYPES}
+
+
+@app.post("/api/v1/sources", status_code=201)
+def create_source(body: SourceIn):
+    config = _safe_source_config(body.config)
+    source_id = str(uuid.uuid4())
+    with connect() as conn:
+        conn.execute("INSERT INTO sources(id,name,source_type,domain,config) VALUES(%s,%s,%s,%s,%s)", (source_id, body.name, body.source_type, body.domain, Jsonb(config)))
+        audit(conn, "source.created", "source", source_id, {"source_type": body.source_type, "domain": body.domain})
+    return {"id": source_id, "name": body.name, "source_type": body.source_type, "domain": body.domain, "status": "configured", "connection_mode": "implemented" if body.source_type in ("file_import", "manual") else "adapter_required"}
+
+
+@app.patch("/api/v1/sources/{source_id}")
+def update_source(source_id: str, body: SourceUpdate):
+    with connect() as conn:
+        row = conn.execute("UPDATE sources SET status=%s,updated_at=now() WHERE id=%s RETURNING id,name,source_type,domain,status", (body.status, source_id)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Source not found")
+        audit(conn, "source.status_changed", "source", source_id, {"status": body.status})
+    return {"id": row[0], "name": row[1], "source_type": row[2], "domain": row[3], "status": row[4]}
+
+
+def _map_import_record(record: dict[str, Any], mapping: dict[str, str], source_name: str, domain: str) -> dict[str, Any]:
+    # mapping is canonical_field -> input_field; canonical names are the default.
+    def val(field: str, default: Any = None):
+        key = mapping.get(field, field)
+        return record.get(key, default)
+    raw = dict(record)
+    return {
+        "event_time": val("event_time", val("timestamp")),
+        "source": source_name,
+        "event_type": str(val("event_type", val("type", "unknown_event"))),
+        "domain": domain,
+        "severity": str(val("severity", "medium")),
+        "src_ip": val("src_ip", val("source_ip")),
+        "dst_ip": val("dst_ip", val("destination_ip")),
+        "username": val("username", val("user")),
+        "host": val("host", val("hostname")),
+        "message": str(val("message", val("description", json.dumps(record, default=str)))),
+        "raw": raw,
+    }
+
+
+@app.post("/api/v1/sources/import")
+def import_source_data(body: ImportIn):
+    if len(body.content.encode("utf-8")) > 5_000_000:
+        raise HTTPException(status_code=413, detail="Import content exceeds 5 MB")
+    try:
+        if body.format == "json":
+            decoded = json.loads(body.content)
+            records = decoded if isinstance(decoded, list) else decoded.get("events", [decoded]) if isinstance(decoded, dict) else None
+        elif body.format in ("jsonl", "ndjson"):
+            records = [json.loads(line) for line in body.content.splitlines() if line.strip()]
+        elif body.format == "csv":
+            records = list(csv.DictReader(StringIO(body.content)))
+        else:
+            # Conservative text/syslog adapter: preserve every raw line and map only
+            # recognizable security patterns; unknown lines remain log_message.
+            records = []
+            for line_no, line in enumerate(body.content.splitlines(), 1):
+                if not line.strip():
+                    continue
+                lower = line.lower()
+                event_type = "log_message"
+                if any(token in lower for token in ("failed password", "authentication failure", "login failed", "invalid password", "failed login")):
+                    event_type = "authentication_failure"
+                elif any(token in lower for token in ("privilege escalation", "sudo: session opened", "added to administrators", "role elevated")):
+                    event_type = "privilege_escalation"
+                elif any(token in lower for token in ("powershell -enc", "mimikatz", "credential dump", "suspicious process")):
+                    event_type = "suspicious_process"
+                elif any(token in lower for token in ("malware detected", "ransomware", "trojan detected")):
+                    event_type = "malware_detected"
+                ip_match = re.search(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", line)
+                user_match = re.search(r"(?:user|account|for)[:= ]+([A-Za-z0-9_.@-]{2,100})", line, re.I)
+                records.append({"event_type": event_type, "severity": "high" if event_type != "log_message" else "informational",
+                    "src_ip": ip_match.group(0) if ip_match else None, "username": user_match.group(1) if user_match else None,
+                    "message": line[:10000], "raw": {"line_number": line_no, "raw_line": line, "parser": "aegis-text-v1"}})
+        if not isinstance(records, list) or not records:
+            raise ValueError("No records found")
+        if len(records) > 500:
+            raise HTTPException(status_code=413, detail="A single import is limited to 500 records; split larger files into batches")
+        if any(not isinstance(item, dict) for item in records):
+            raise ValueError("Each imported record must be an object/row")
+        mapped = [_map_import_record(item, body.mapping, body.source_name, body.domain) for item in records]
+        validated = [EventIn.model_validate(item) for item in mapped]
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Import validation failed: {str(exc)[:300]}") from exc
+    result = ingest_batch(EventBatch(events=validated))
+    with connect() as conn:
+        source = conn.execute("SELECT id FROM sources WHERE name=%s AND domain=%s ORDER BY created_at LIMIT 1", (body.source_name, body.domain)).fetchone()
+        if source:
+            conn.execute("UPDATE sources SET status='ingesting',last_seen_at=now(),updated_at=now() WHERE id=%s", (source[0],))
+            audit(conn, "source.import_completed", "source", source[0], {"format": body.format, "record_count": len(records), "accepted": result["accepted"]})
+    return {"source_name": body.source_name, "format": body.format, "input_count": len(records), **result, "validation": "passed", "note": "Imported through the same event normalization and detection path as API events."}
+
+
+@app.get("/api/v1/lab/scenarios")
+def list_lab_scenarios():
+    items = []
+    for domain, scenarios in LAB_SCENARIOS.items():
+        for event_type, title in scenarios:
+            items.append({"id": f"{domain}:{event_type}", "domain": domain, "event_type": event_type, "title": title, "expected": "domain rule alert", "dataset_kind": "synthetic", "status": "implemented-rule-smoke"})
+        items.append({"id": f"{domain}:benign_baseline", "domain": domain, "event_type": "normal_activity", "title": f"{DOMAIN_CATALOG[domain]['label']} benign baseline", "expected": "no domain-family alert", "dataset_kind": "synthetic", "status": "implemented-negative-smoke"})
+    for domain, rule in CORRELATION_RULES.items():
+        items.append({"id": f"{domain}:correlation_sequence", "domain": domain, "event_type": f"{rule['first']} -> {rule['second']}", "title": f"Correlated sequence: {rule['first']} followed by {rule['second']}", "expected": "one explainable correlation lead with two evidence event IDs", "dataset_kind": "synthetic-sequence", "status": "implemented-correlation-smoke"})
+    return {"catalog_version": "aegis-lab-v1", "domains": list(DOMAIN_CATALOG.keys()), "scenario_count": len(items), "items": items, "limitations": ["These are deterministic rule and correlation smoke scenarios, not full attack emulation.", "A passing synthetic scenario proves the defined software path, not production detection effectiveness."]}
+
+
+@app.post("/api/v1/lab/run")
+def run_lab(body: LabRunIn):
+    domains = list(LAB_SCENARIOS) if body.domain == "all" else [body.domain]
+    results = []
+    for domain in domains:
+        candidates = LAB_SCENARIOS[domain]
+        include_benign = body.scenario in ("benign_baseline", "mixed_suite", "all")
+        include_attack = body.scenario in ("domain_smoke", "mixed_suite", "all")
+        if body.scenario == "benign_baseline":
+            candidates = []
+        for event_type, title in (candidates if include_attack else []):
+            for n in range(body.scale):
+                # Unique timestamps and scenario markers make each run reproducible without accidental dedup.
+                event = EventIn(source=f"aegis-lab:{domain}", event_type=event_type, domain=domain,
+                    severity="high", src_ip="198.51.100.23", username=f"lab-user-{n+1}", host=f"lab-host-{domain}",
+                    message=f"LAB SYNTHETIC SCENARIO: {title}; no external system contacted.",
+                    raw={"lab": True, "scenario_id": f"{domain}:{event_type}", "scenario_title": title, "iteration": n, "generated_by": "aegis-lab-v1"})
+                result = ingest_batch(EventBatch(events=[event]))
+                alerts = len(result.get("alert_ids", []))
+                results.append({"scenario_id": f"{domain}:{event_type}", "domain": domain, "event_type": event_type, "expected_alert": True, "observed_alerts": alerts, "pass": alerts > 0, "event_id": result["items"][0]["event_id"], "duplicate": result["items"][0]["duplicate"]})
+        if include_benign:
+            benign = EventIn(source=f"aegis-lab:{domain}", event_type="normal_activity", domain=domain,
+                severity="informational", src_ip="198.51.100.24", username=f"lab-benign-{uuid.uuid4().hex[:8]}",
+                host=f"lab-host-{domain}", message=f"LAB BENIGN BASELINE: routine {DOMAIN_CATALOG[domain]['label']} activity.",
+                raw={"lab": True, "scenario_id": f"{domain}:benign_baseline", "generated_by": "aegis-lab-v1"})
+            result = ingest_batch(EventBatch(events=[benign]))
+            alerts = len(result.get("alert_ids", []))
+            results.append({"scenario_id": f"{domain}:benign_baseline", "domain": domain, "event_type": "normal_activity", "expected_alert": False, "observed_alerts": alerts, "pass": alerts == 0, "event_id": result["items"][0]["event_id"], "duplicate": result["items"][0]["duplicate"]})
+    if body.scenario in ("mixed_suite", "all"):
+        for domain in domains:
+            try:
+                correlation = simulate_correlation_scenario(domain)
+                lead = correlation.get("lead") or {}
+                ok = bool(lead.get("evidence_event_ids")) and len(lead.get("evidence_event_ids", [])) == 2
+                results.append({"scenario_id": f"{domain}:correlation_sequence", "domain": domain,
+                    "expected_correlation": True, "observed_rule_id": lead.get("rule_id"),
+                    "evidence_event_ids": lead.get("evidence_event_ids", []), "pass": ok})
+            except Exception as exc:
+                results.append({"scenario_id": f"{domain}:correlation_sequence", "domain": domain,
+                    "expected_correlation": True, "pass": False, "error": str(exc)[:200]})
+    passed = sum(1 for r in results if r["pass"])
+    report = {"suite": body.scenario, "domain_scope": body.domain, "dataset_version": "aegis-lab-v1", "result_count": len(results), "passed": passed, "failed": len(results)-passed, "pass_rate": round(passed/len(results), 4) if results else 0, "results": results, "limitations": ["Synthetic deterministic rule/correlation smoke only; no claim of real-world detection quality.", "Repeated exact event fingerprints are deduplicated by the ingestion pipeline.", "AI investigation quality is not part of this suite; local LLM availability and analyst review are separate checks."]}
+    run_id = str(uuid.uuid4())
+    with connect() as conn:
+        conn.execute("INSERT INTO lab_runs(id,scenario_id,domain,status,report) VALUES(%s,%s,%s,%s,%s)", (run_id, body.scenario, body.domain, "passed" if report["failed"] == 0 else "failed", Jsonb(report)))
+        audit(conn, "lab.run_completed", "lab_run", run_id, {"suite": body.scenario, "domain": body.domain, "passed": passed, "failed": report["failed"]})
+    return {"run_id": run_id, **report}
+
+
+@app.get("/api/v1/lab/runs")
+def lab_runs(limit: int = Query(default=20, ge=1, le=100)):
+    with connect() as conn:
+        rows = conn.execute("SELECT id,scenario_id,domain,status,report,created_at FROM lab_runs ORDER BY created_at DESC LIMIT %s", (limit,)).fetchall()
+    return {"items": [{"id": r[0], "scenario": r[1], "domain": r[2], "status": r[3], "report": r[4], "created_at": r[5]} for r in rows]}
+
+
+@app.get("/api/v1/lab/export")
+def export_lab_data(format: str = Query(default="jsonl", pattern="^(json|jsonl|csv)$"), limit: int = Query(default=500, ge=1, le=5000)):
+    """Export recent Lab/simulation events for offline review or client import testing."""
+    with connect() as conn:
+        rows = conn.execute("""SELECT event_time,source,event_type,severity,src_ip,dst_ip,username,host,message,raw
+            FROM security_events WHERE raw->>'lab'='true' OR raw->>'simulation'='true'
+            ORDER BY event_time DESC LIMIT %s""", (limit,)).fetchall()
+    fields = ["event_time","source","event_type","severity","src_ip","dst_ip","username","host","message","raw"]
+    records = []
+    for row in rows:
+        item = dict(zip(fields, row))
+        item["event_time"] = item["event_time"].isoformat() if item["event_time"] else None
+        records.append(item)
+    if format == "json":
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content={"dataset_version":"aegis-lab-v1","count":len(records),"events":records}, headers={"Content-Disposition":"attachment; filename=aegis-lab-events.json"})
+    if format == "jsonl":
+        content = "".join(json.dumps(item, default=str, separators=(",", ":"))+"\n" for item in records)
+        return PlainTextResponse(content, media_type="application/x-ndjson", headers={"Content-Disposition":"attachment; filename=aegis-lab-events.jsonl"})
+    output = StringIO()
+    writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    for item in records:
+        item = dict(item); item["raw"] = json.dumps(item.get("raw") or {}, default=str)
+        writer.writerow(item)
+    return PlainTextResponse(output.getvalue(), media_type="text/csv", headers={"Content-Disposition":"attachment; filename=aegis-lab-events.csv"})
+
+
+@app.post("/api/v1/ml/anomaly/run")
+def run_anomaly_detection(limit: int = Query(default=1000, ge=20, le=5000)):
+    """Fit an IsolationForest baseline on recent event features; scores are triage signals, not verdicts."""
+    try:
+        from sklearn.ensemble import IsolationForest
+        from sklearn.feature_extraction import DictVectorizer
+    except ImportError as exc:
+        raise HTTPException(status_code=503, detail="scikit-learn is unavailable; rebuild the API image with backend requirements installed") from exc
+    with connect() as conn:
+        rows = conn.execute("""SELECT id,event_time,source,event_type,severity,src_ip,username,host,raw
+            FROM security_events ORDER BY event_time DESC LIMIT %s""", (limit,)).fetchall()
+    if len(rows) < 20:
+        raise HTTPException(status_code=422, detail=f"At least 20 stored events are required; found {len(rows)}. Run the Lab suite or import representative data first.")
+    records = []
+    for row in rows:
+        item = dict(zip(["id","event_time","source","event_type","severity","src_ip","username","host","raw"], row))
+        records.append((item, anomaly_feature_row(item)))
+    vectorizer = DictVectorizer(sparse=False)
+    matrix = vectorizer.fit_transform([features for _, features in records])
+    model = IsolationForest(n_estimators=100, contamination=0.08, random_state=42, n_jobs=2)
+    model.fit(matrix)
+    raw_scores = [-float(score) for score in model.score_samples(matrix)]
+    lo, hi = min(raw_scores), max(raw_scores)
+    scored = []
+    for (event, features), score, prediction in zip(records, raw_scores, model.predict(matrix)):
+        normalized = round((score-lo)/(hi-lo), 4) if hi > lo else 0.0
+        scored.append({"event_id": event["id"], "event_time": event["event_time"], "event_type": event["event_type"],
+            "source": event["source"], "severity": event["severity"], "src_ip": event["src_ip"],
+            "anomaly_score": normalized, "model_label": "anomaly_candidate" if prediction == -1 else "baseline",
+            "features": features})
+    scored.sort(key=lambda item: item["anomaly_score"], reverse=True)
+    run_id = str(uuid.uuid4())
+    report = {"model_name": "IsolationForest", "model_version": "aegis-iforest-v1", "sample_count": len(records),
+        "feature_count": len(vectorizer.get_feature_names_out()), "training_mode": "unsupervised-on-recent-stored-events",
+        "anomaly_candidate_count": sum(1 for item in scored if item["model_label"] == "anomaly_candidate"),
+        "top_anomalies": scored[:25], "limitations": [
+            "This is an unsupervised baseline trained on the current selected event population; contaminated or synthetic data changes the baseline.",
+            "Anomaly scores are prioritization signals, not maliciousness probabilities or confirmed incidents.",
+            "No durable fitted model artifact, drift monitor, or labeled quality score is claimed in this release."]}
+    with connect() as conn:
+        conn.execute("INSERT INTO ml_runs(id,model_name,model_version,sample_count,report) VALUES(%s,%s,%s,%s,%s)",
+            (run_id, report["model_name"], report["model_version"], len(records), Jsonb(report)))
+        audit(conn, "ml.anomaly_run", "ml_run", run_id, {"sample_count": len(records), "model_version": report["model_version"]})
+    return {"run_id": run_id, **report}
+
+
+@app.get("/api/v1/ml/anomaly/runs")
+def list_anomaly_runs(limit: int = Query(default=10, ge=1, le=100)):
+    with connect() as conn:
+        rows = conn.execute("SELECT id,model_name,model_version,sample_count,report,created_at FROM ml_runs ORDER BY created_at DESC LIMIT %s", (limit,)).fetchall()
+    return {"items": [{"id":r[0],"model_name":r[1],"model_version":r[2],"sample_count":r[3],"report":r[4],"created_at":r[5]} for r in rows]}
 
 
 @app.get("/api/v1/audit")
