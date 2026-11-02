@@ -1,0 +1,14 @@
+{
+  "marker": "AEGIS-B2-20261030-7F3A",
+  "status": "PASS",
+  "created_ids": {
+    "events": [],
+    "alerts": [],
+    "cases": [],
+    "indicators": [],
+    "documents": [
+      "656b5bb8-6f2b-43f2-bf87-6451580f05bf"
+    ],
+    "agent_runs": []
+  }
+}

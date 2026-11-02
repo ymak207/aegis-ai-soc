@@ -1,0 +1,214 @@
+{
+  "pack": "AEGIS B3 Detection and Correlation",
+  "marker": "AEGIS-B3-20261102",
+  "description": "Synthetic deterministic API acceptance records. No external systems are contacted.",
+  "events": [
+    {
+      "case": "authentication_rule",
+      "event_time": "2026-11-02T06:00:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "authentication_failure",
+      "domain": "cloud_saas",
+      "severity": "medium",
+      "src_ip": "192.0.2.31",
+      "username": "b3-auth-20261102",
+      "host": "b3-endpoint-01",
+      "message": "AEGIS-B3-20261102 repeated authentication failure from synthetic test source",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "authentication_rule"
+      }
+    },
+    {
+      "case": "endpoint_and_behavior_overlap",
+      "event_time": "2026-11-02T06:01:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "suspicious_process",
+      "domain": "cloud_saas",
+      "severity": "medium",
+      "src_ip": "192.0.2.32",
+      "username": "b3-endpoint-20261102",
+      "host": "b3-endpoint-02",
+      "message": "AEGIS-B3-20261102 mimikatz credential dump detected in synthetic process command line",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "endpoint_and_behavior_overlap"
+      }
+    },
+    {
+      "case": "benign_negative",
+      "event_time": "2026-11-02T06:02:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "normal_activity",
+      "domain": "cloud_saas",
+      "severity": "low",
+      "src_ip": "192.0.2.33",
+      "username": "b3-benign-20261102",
+      "host": "b3-endpoint-03",
+      "message": "AEGIS-B3-20261102 routine scheduled health check completed successfully",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "benign_negative"
+      }
+    },
+    {
+      "case": "correlation_positive_first",
+      "event_time": "2026-11-02T07:00:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "credential_abuse",
+      "domain": "cloud_saas",
+      "severity": "medium",
+      "src_ip": "192.0.2.41",
+      "username": "b3-corr-positive-20261102",
+      "host": "b3-cloud-01",
+      "message": "AEGIS-B3-20261102 synthetic credential abuse sequence first event",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "correlation_positive_first"
+      }
+    },
+    {
+      "case": "correlation_positive_second",
+      "event_time": "2026-11-02T07:10:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "privilege_escalation",
+      "domain": "cloud_saas",
+      "severity": "high",
+      "src_ip": "192.0.2.42",
+      "username": "b3-corr-positive-20261102",
+      "host": "b3-cloud-01",
+      "message": "AEGIS-B3-20261102 synthetic privilege escalation sequence second event",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "correlation_positive_second"
+      }
+    },
+    {
+      "case": "different_entity_first",
+      "event_time": "2026-11-02T07:20:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "credential_abuse",
+      "domain": "cloud_saas",
+      "severity": "medium",
+      "src_ip": "192.0.2.43",
+      "username": "b3-mismatch-a-20261102",
+      "host": "b3-cloud-02",
+      "message": "AEGIS-B3-20261102 different-entity correlation negative first",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "different_entity_first"
+      }
+    },
+    {
+      "case": "different_entity_second",
+      "event_time": "2026-11-02T07:25:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "privilege_escalation",
+      "domain": "cloud_saas",
+      "severity": "high",
+      "src_ip": "192.0.2.44",
+      "username": "b3-mismatch-b-20261102",
+      "host": "b3-cloud-02",
+      "message": "AEGIS-B3-20261102 different-entity correlation negative second",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "different_entity_second"
+      }
+    },
+    {
+      "case": "reversed_order_second",
+      "event_time": "2026-11-02T07:30:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "privilege_escalation",
+      "domain": "cloud_saas",
+      "severity": "high",
+      "src_ip": "192.0.2.45",
+      "username": "b3-reversed-20261102",
+      "host": "b3-cloud-03",
+      "message": "AEGIS-B3-20261102 reversed sequence negative second-type first",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "reversed_order_second"
+      }
+    },
+    {
+      "case": "reversed_order_first",
+      "event_time": "2026-11-02T07:35:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "credential_abuse",
+      "domain": "cloud_saas",
+      "severity": "medium",
+      "src_ip": "192.0.2.46",
+      "username": "b3-reversed-20261102",
+      "host": "b3-cloud-03",
+      "message": "AEGIS-B3-20261102 reversed sequence negative first-type later",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "reversed_order_first"
+      }
+    },
+    {
+      "case": "outside_window_first",
+      "event_time": "2026-11-02T08:00:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "credential_abuse",
+      "domain": "cloud_saas",
+      "severity": "medium",
+      "src_ip": "192.0.2.47",
+      "username": "b3-outside-window-20261102",
+      "host": "b3-cloud-04",
+      "message": "AEGIS-B3-20261102 outside-window correlation negative first",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "outside_window_first"
+      }
+    },
+    {
+      "case": "outside_window_second",
+      "event_time": "2026-11-02T08:31:00Z",
+      "source": "AEGIS-B3-20261102",
+      "event_type": "privilege_escalation",
+      "domain": "cloud_saas",
+      "severity": "high",
+      "src_ip": "192.0.2.48",
+      "username": "b3-outside-window-20261102",
+      "host": "b3-cloud-04",
+      "message": "AEGIS-B3-20261102 outside-window correlation negative second",
+      "raw": {
+        "acceptance_marker": "AEGIS-B3-20261102",
+        "test_case": "outside_window_second"
+      }
+    }
+  ],
+  "expected_detection": {
+    "authentication_rule": [
+      "AUTH-001"
+    ],
+    "endpoint_and_behavior_overlap": [
+      "BEHAVIOR-001",
+      "ENDPOINT-001"
+    ],
+    "benign_negative": [],
+    "correlation_positive_first": [
+      "DOMAIN-CLOUD_SAAS-001"
+    ],
+    "correlation_positive_second": [
+      "DOMAIN-CLOUD_SAAS-001",
+      "PRIV-001"
+    ]
+  },
+  "correlation_expectation": {
+    "domain": "cloud_saas",
+    "rule_id": "CORR-CLOUD-001",
+    "first": "credential_abuse",
+    "second": "privilege_escalation",
+    "entity_field": "username",
+    "window_minutes": 30,
+    "positive_case": "correlation_positive",
+    "negative_cases": [
+      "different_entity",
+      "reversed_order",
+      "outside_window"
+    ]
+  }
+}

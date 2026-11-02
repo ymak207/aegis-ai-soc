@@ -1,0 +1,162 @@
+{
+  "pack": "AEGIS B3 Detection and Correlation Acceptance",
+  "marker": "AEGIS-B3-20261102",
+  "base_url": "http://127.0.0.1:8000",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "readiness",
+      "status": "PASS",
+      "detail": {
+        "status": "ready",
+        "checks": {
+          "postgres": "ok",
+          "redis": "ok"
+        }
+      }
+    },
+    {
+      "name": "synthetic_event_batch_ingestion",
+      "status": "PASS",
+      "detail": {
+        "submitted": 11,
+        "accepted": 11
+      }
+    },
+    {
+      "name": "exact_detection_rule_and_severity_assertions",
+      "status": "PASS",
+      "detail": {
+        "authentication_rule": {
+          "expected_rule_ids": [
+            "AUTH-001"
+          ],
+          "actual_rule_ids": [
+            "AUTH-001"
+          ]
+        },
+        "endpoint_and_behavior_overlap": {
+          "expected_rule_ids": [
+            "BEHAVIOR-001",
+            "ENDPOINT-001"
+          ],
+          "actual_rule_ids": [
+            "BEHAVIOR-001",
+            "ENDPOINT-001"
+          ]
+        },
+        "benign_negative": {
+          "expected_rule_ids": [],
+          "actual_rule_ids": []
+        },
+        "correlation_positive_first": {
+          "expected_rule_ids": [
+            "DOMAIN-CLOUD_SAAS-001"
+          ],
+          "actual_rule_ids": [
+            "DOMAIN-CLOUD_SAAS-001"
+          ]
+        },
+        "correlation_positive_second": {
+          "expected_rule_ids": [
+            "DOMAIN-CLOUD_SAAS-001",
+            "PRIV-001"
+          ],
+          "actual_rule_ids": [
+            "DOMAIN-CLOUD_SAAS-001",
+            "PRIV-001"
+          ]
+        }
+      }
+    },
+    {
+      "name": "benign_event_false_positive_guard",
+      "status": "PASS",
+      "detail": {
+        "event_id": "b75b7714-2e59-4e05-87a0-1e4823c344d3",
+        "alert_count": 0
+      }
+    },
+    {
+      "name": "duplicate_replay_idempotency",
+      "status": "PASS",
+      "detail": {
+        "original_event_id": "0fe84c1f-1576-4b54-816e-9c59d5dd36d9",
+        "replay_duplicate": true,
+        "replay_alerts": []
+      }
+    },
+    {
+      "name": "event_persistence_and_no_duplicate_row",
+      "status": "PASS",
+      "detail": {
+        "expected_events": 11,
+        "persisted_events": 11
+      }
+    },
+    {
+      "name": "correlation_positive_and_negative_sequence_validation",
+      "status": "PASS",
+      "detail": {
+        "rule_id": "CORR-CLOUD-001",
+        "entity": "b3-corr-positive-20261102",
+        "evidence_event_ids": [
+          "ac8324a3-1a27-4684-83fc-0869dd34b36c",
+          "1768b0cf-017d-446e-aa7b-0b90f7374a8a"
+        ],
+        "observed_interval_seconds": 600,
+        "negative_entities_without_leads": 4
+      }
+    }
+  ],
+  "created_ids": {
+    "events": [
+      "0c9f3c9a-d65f-4225-b302-cc267b1ca544",
+      "0fe84c1f-1576-4b54-816e-9c59d5dd36d9",
+      "b75b7714-2e59-4e05-87a0-1e4823c344d3",
+      "ac8324a3-1a27-4684-83fc-0869dd34b36c",
+      "1768b0cf-017d-446e-aa7b-0b90f7374a8a",
+      "8139f25b-18cb-41f0-b2eb-c0fa0ce2d337",
+      "0f30cf3b-cb2e-4fd6-906e-d01eaac053e0",
+      "680dce44-ff61-44dd-91ac-9cda1e04d806",
+      "f21b8d8c-38ad-4fc0-b694-f81b22b39fa3",
+      "c06add08-f0a5-433c-ae8f-f717274361da",
+      "5c259530-d3dc-4879-b455-65bf8b790563"
+    ],
+    "alerts": [
+      "4217894c-1f79-4a71-adaf-eaef291de1a4",
+      "9a132105-2ff9-48d3-b488-835b14f3f6ec",
+      "86b1edf5-2d37-4ce5-936d-66e6a2d5a9dd",
+      "1c84725c-51f3-448a-87e4-06fef2131557",
+      "752dd361-a871-4c78-a39c-545e78e1379c",
+      "59292c80-cdaf-4323-8b89-5de4a351d6d3",
+      "222bc126-ac46-4b72-a463-d31de75d93b5",
+      "5d5ad6d7-2fe9-4692-8af4-1ee53c2f5d52",
+      "0f21f284-601a-4b30-89a1-e307de9426c6",
+      "a7a93f84-bac9-4c33-8b13-dc9681abe409",
+      "fd358a79-5abb-41c1-8d61-a8e85b193aa4",
+      "fee7e118-108f-4868-b201-8263e2569940",
+      "6403c1cb-ca6c-4433-b098-bbd1c9545ae9",
+      "8e20d176-2b66-4ec9-ab3b-00266405ec0a",
+      "67caad44-03bc-4526-9414-65bf11870407"
+    ]
+  },
+  "case_event_ids": {
+    "authentication_rule": "0c9f3c9a-d65f-4225-b302-cc267b1ca544",
+    "endpoint_and_behavior_overlap": "0fe84c1f-1576-4b54-816e-9c59d5dd36d9",
+    "benign_negative": "b75b7714-2e59-4e05-87a0-1e4823c344d3",
+    "correlation_positive_first": "ac8324a3-1a27-4684-83fc-0869dd34b36c",
+    "correlation_positive_second": "1768b0cf-017d-446e-aa7b-0b90f7374a8a",
+    "different_entity_first": "8139f25b-18cb-41f0-b2eb-c0fa0ce2d337",
+    "different_entity_second": "0f30cf3b-cb2e-4fd6-906e-d01eaac053e0",
+    "reversed_order_second": "680dce44-ff61-44dd-91ac-9cda1e04d806",
+    "reversed_order_first": "f21b8d8c-38ad-4fc0-b694-f81b22b39fa3",
+    "outside_window_first": "c06add08-f0a5-433c-ae8f-f717274361da",
+    "outside_window_second": "5c259530-d3dc-4879-b455-65bf8b790563"
+  },
+  "notes": [
+    "Synthetic TEST-NET IP addresses only; no external systems contacted.",
+    "Correlation endpoint derives leads dynamically from persisted events; leads are not separately persisted rows.",
+    "Audit records are retained during cleanup; event deletion cascades associated alerts."
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "pack": "AEGIS Backend Acceptance B2",
+  "marker": "AEGIS-B2-20261030-7F3A",
+  "base_url": "http://127.0.0.1:8000",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "database_and_cache_readiness",
+      "status": "PASS",
+      "duration_ms": 0,
+      "detail": {
+        "status": "ready",
+        "checks": {
+          "postgres": "ok",
+          "redis": "ok"
+        }
+      }
+    },
+    {
+      "name": "threat_indicator_create_and_read",
+      "status": "PASS",
+      "duration_ms": 0,
+      "detail": {
+        "id": "0bad978f-b94f-4a40-a214-92a17186e5fb",
+        "confidence": 91
+      }
+    },
+    {
+      "name": "indicator_enrichment_detection_and_alert_persistence",
+      "status": "PASS",
+      "duration_ms": 0,
+      "detail": {
+        "event_id": "83aa3266-6397-4dc0-8ec7-9558e6be489e",
+        "event_type": "threat_indicator_match",
+        "alert_ids": [
+          "f1202625-19a6-4577-9767-4aa52d37c4c4"
+        ],
+        "alert_severity": "critical"
+      }
+    },
+    {
+      "name": "case_create_update_and_timeline",
+      "status": "PASS",
+      "duration_ms": 0,
+      "detail": {
+        "case_id": "c3066087-2f5e-4169-b8a2-c59807d5733c",
+        "timeline_entries": 2,
+        "entry_types": [
+          "created",
+          "note"
+        ]
+      }
+    },
+    {
+      "name": "knowledge_document_persistence_and_search",
+      "status": "PASS",
+      "detail": {
+        "document_id": "038d3cc4-fc87-4e49-ba7d-6a66337a8d43",
+        "retrieval_status": "vector_indexed",
+        "search_mode": "qdrant-vector",
+        "result_count": 3
+      }
+    },
+    {
+      "name": "investigation_and_agent_run_persistence",
+      "status": "PASS",
+      "detail": {
+        "run_id": "565e9360-028c-4e80-b411-0cb825747697",
+        "mode": "evidence-based-baseline",
+        "trace": [
+          {
+            "step": "load_alert_context",
+            "status": "ok"
+          },
+          {
+            "step": "retrieve_knowledge",
+            "status": "ok",
+            "evidence_count": 3,
+            "retriever": "qdrant-vector"
+          },
+          {
+            "step": "local_llm",
+            "status": "fallback",
+            "model": null
+          },
+          {
+            "step": "recommendations",
+            "status": "ok",
+            "response_actions_executed": false
+          }
+        ],
+        "duration_ms": 45059,
+        "agent_run_status": "completed"
+      }
+    },
+    {
+      "name": "audit_action_and_entity_linkage",
+      "status": "PASS",
+      "detail": {
+        "verified_pairs": 6
+      }
+    }
+  ],
+  "created_ids": {
+    "events": [
+      "83aa3266-6397-4dc0-8ec7-9558e6be489e"
+    ],
+    "alerts": [
+      "f1202625-19a6-4577-9767-4aa52d37c4c4"
+    ],
+    "cases": [
+      "c3066087-2f5e-4169-b8a2-c59807d5733c"
+    ],
+    "indicators": [
+      "0bad978f-b94f-4a40-a214-92a17186e5fb"
+    ],
+    "documents": [
+      "038d3cc4-fc87-4e49-ba7d-6a66337a8d43"
+    ],
+    "agent_runs": [
+      "565e9360-028c-4e80-b411-0cb825747697"
+    ]
+  },
+  "failure": "",
+  "cleanup_warning": "Use cleanup only after reviewing created_ids in acceptance_report.json.",
+  "notes": [
+    "The original run stopped because the supplied fixture marker did not match the runner's expected marker. This continuation corrected the fixture and resumed after the four successful checks without recreating them.",
+    "Audit records are intentionally retained after cleanup."
+  ]
+}

@@ -1,0 +1,16 @@
+AEGIS ACCEPTANCE PACK 03 — TEST KNOWLEDGE DOCUMENT
+
+Document ID marker: AEGIS-B2-20261030-7F3A
+
+Scenario: suspicious privileged-account activity investigation.
+
+A privileged-account incident should be reviewed when an account receives an unexpected role elevation, followed by access from an unfamiliar source address. Analysts should preserve the original event timestamp, source system, username, source IP, host, and event message. A threat-intelligence indicator match increases investigation priority but is not proof of compromise by itself.
+
+Recommended investigation workflow:
+1. Validate the identity of the account owner and the approved change request.
+2. Compare the role elevation timestamp with the authentication and session records.
+3. Check whether the source IP appears in the organization's approved network inventory.
+4. Correlate related events for the same account and host.
+5. Record evidence, uncertainty, analyst decision, and containment approval in the case timeline.
+
+Do not automatically disable accounts or block network addresses based only on an indicator match. Response actions require an authorized analyst decision.
