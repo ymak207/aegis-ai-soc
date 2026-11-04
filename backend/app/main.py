@@ -1532,7 +1532,13 @@ def run_anomaly_detection(limit: int = Query(default=1000, ge=20, le=5000)):
     scored = []
     for (event, features), score, prediction in zip(records, raw_scores, model.predict(matrix)):
         normalized = round((score-lo)/(hi-lo), 4) if hi > lo else 0.0
-        scored.append({"event_id": event["id"], "event_time": event["event_time"], "event_type": event["event_type"],
+        scored.append({"event_id": event["id"], 
+            "event_time": (
+                event["event_time"].isoformat()
+                if hasattr(event["event_time"], "isoformat")
+                else event["event_time"]
+            ), 
+            "event_type": event["event_type"],
             "source": event["source"], "severity": event["severity"], "src_ip": event["src_ip"],
             "anomaly_score": normalized, "model_label": "anomaly_candidate" if prediction == -1 else "baseline",
             "features": features})

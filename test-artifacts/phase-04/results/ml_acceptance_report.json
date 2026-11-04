@@ -1,0 +1,270 @@
+{
+  "marker": "AEGIS-ML-20261102",
+  "dataset_version": "aegis-ml-anomaly-fixture-v1",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "fixture_version_and_count",
+      "status": "PASS",
+      "details": {
+        "dataset_version": "aegis-ml-anomaly-fixture-v1",
+        "event_count": 40
+      }
+    },
+    {
+      "name": "reject_limit_below_20",
+      "status": "PASS",
+      "details": {
+        "http_status": 422,
+        "response": {
+          "detail": [
+            {
+              "type": "greater_than_equal",
+              "loc": [
+                "query",
+                "limit"
+              ],
+              "msg": "Input should be greater than or equal to 20",
+              "input": "19",
+              "ctx": {
+                "ge": 20
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "ingest_40_scoped_events",
+      "status": "PASS",
+      "details": {
+        "http_status": 200,
+        "accepted": 40,
+        "returned_ids": 40
+      }
+    },
+    {
+      "name": "no_duplicate_ingestion",
+      "status": "PASS",
+      "details": {
+        "duplicate_count": 0
+      }
+    },
+    {
+      "name": "ml_run_1_http_and_model_contract",
+      "status": "PASS",
+      "details": {
+        "http_status": 200,
+        "model_name": "IsolationForest",
+        "model_version": "aegis-iforest-v1",
+        "training_mode": "unsupervised-on-recent-stored-events"
+      }
+    },
+    {
+      "name": "ml_run_1_sample_and_scoring_contract",
+      "status": "PASS",
+      "details": {
+        "sample_count": 40,
+        "feature_count": 18,
+        "top_anomaly_count": 25,
+        "score_range_valid": true,
+        "labels_valid": true
+      }
+    },
+    {
+      "name": "ml_run_1_limitations_disclosed",
+      "status": "PASS",
+      "details": {
+        "limitations": [
+          "This is an unsupervised baseline trained on the current selected event population; contaminated or synthetic data changes the baseline.",
+          "Anomaly scores are prioritization signals, not maliciousness probabilities or confirmed incidents.",
+          "No durable fitted model artifact, drift monitor, or labeled quality score is claimed in this release."
+        ]
+      }
+    },
+    {
+      "name": "ml_run_2_http_and_model_contract",
+      "status": "PASS",
+      "details": {
+        "http_status": 200,
+        "model_name": "IsolationForest",
+        "model_version": "aegis-iforest-v1",
+        "training_mode": "unsupervised-on-recent-stored-events"
+      }
+    },
+    {
+      "name": "ml_run_2_sample_and_scoring_contract",
+      "status": "PASS",
+      "details": {
+        "sample_count": 40,
+        "feature_count": 18,
+        "top_anomaly_count": 25,
+        "score_range_valid": true,
+        "labels_valid": true
+      }
+    },
+    {
+      "name": "ml_run_2_limitations_disclosed",
+      "status": "PASS",
+      "details": {
+        "limitations": [
+          "This is an unsupervised baseline trained on the current selected event population; contaminated or synthetic data changes the baseline.",
+          "Anomaly scores are prioritization signals, not maliciousness probabilities or confirmed incidents.",
+          "No durable fitted model artifact, drift monitor, or labeled quality score is claimed in this release."
+        ]
+      }
+    },
+    {
+      "name": "deterministic_repeatability",
+      "status": "PASS",
+      "details": {
+        "run1_candidate_count": 4,
+        "run2_candidate_count": 4,
+        "top_ids_equal": true
+      }
+    },
+    {
+      "name": "both_runs_persisted",
+      "status": "PASS",
+      "details": {
+        "http_status": 200,
+        "found_run_count": 2,
+        "expected_run_ids": [
+          "62889f42-8b49-455a-98a9-e8ba0cba92de",
+          "a7fd8ac7-4160-4aef-bcc5-016ec9eab92f"
+        ]
+      }
+    },
+    {
+      "name": "both_ml_runs_audited",
+      "status": "PASS",
+      "details": {
+        "http_status": 200,
+        "audit_rows_found": 2
+      }
+    }
+  ],
+  "created_ids": {
+    "events": [
+      "ca3a56c8-b4ab-439b-af66-3e880d4f19ea",
+      "4725c33b-a987-4198-88ac-4f0528a01d09",
+      "88cf0be7-7af6-4b79-86de-f14dcbdb1b05",
+      "84672bf6-39bb-4bbc-8ea7-04e75f38d170",
+      "50699a97-3b20-45e9-adc3-02a2e89064c3",
+      "72175c73-98bb-4102-aa4e-2b0b38ecb6c7",
+      "49374986-0908-44be-9a6d-5bc1578896ef",
+      "53529ac2-3aa7-43c2-8198-c2d943f7ada0",
+      "39073477-4f5b-4323-8860-cd5bf7d24ae8",
+      "4abbe408-4931-4535-8b2a-3b6471fbc9d9",
+      "5eb03b82-b81b-444f-a3a7-5559edf66920",
+      "e23bf5d2-38fe-4e96-bc6e-13184b3586ba",
+      "470cd258-c366-4d68-ab32-68cdcfe033be",
+      "c2866be0-b991-4f97-bcd4-e8b5abf8b67a",
+      "f079f029-c9c0-476b-ad28-54547c7a9e93",
+      "12e8f0f9-f78d-4182-aaa5-553f70132717",
+      "ec6803b1-1092-40b8-9cd1-1519551a582d",
+      "7625a70c-ee74-4ebe-99fd-2630982e81b0",
+      "70b01dcf-7f32-4012-8048-8af80a04f28b",
+      "cb896b8a-38e8-46d8-9b9f-3f1f4c26d22e",
+      "7c00544d-dd1d-46fe-a4de-c45798506ee1",
+      "d70c38f0-666a-470c-b9d9-c079a277a1ac",
+      "fc7a230a-b5d5-4904-9dd3-5394fb44b898",
+      "6dc7f850-b04d-448b-89c3-133bc3bc1bab",
+      "644e417b-8a3b-421d-a587-20a923d12829",
+      "306ee15a-e902-4d2a-9d13-7e05001aa7c6",
+      "c43f9d5d-dce7-49b2-8acd-f3289483997f",
+      "9de5f975-59ae-4621-b6b3-b3266c994b6b",
+      "70ae615f-2d70-4b64-b6b7-98c33e457d9a",
+      "ed29db94-7f8e-4ca8-a029-a9d8c4fe4871",
+      "04b1d35f-ec16-4b06-9c9a-4a8c32a75ab3",
+      "0b526b54-bfe9-47a1-a9a1-8035a6cddc2d",
+      "4545445c-111f-401a-b315-5df134f2063a",
+      "68af713c-eb39-4825-b271-88a163e9901d",
+      "1e10d6aa-0c3d-401b-b9e8-87f7f529869e",
+      "842e21e1-93bb-4ca0-8e6a-62f720731d68",
+      "f075d471-c605-4164-8ec5-3bbc305d1921",
+      "0a795561-e112-4f3a-a5fe-9273840a6f5b",
+      "f9d58091-07b5-492c-bcf9-a19c4a4f9bf1",
+      "3228230b-b63e-43b1-ba90-33385d92782d"
+    ],
+    "ml_runs": [
+      "62889f42-8b49-455a-98a9-e8ba0cba92de",
+      "a7fd8ac7-4160-4aef-bcc5-016ec9eab92f"
+    ]
+  },
+  "runs": [
+    {
+      "run_id": "62889f42-8b49-455a-98a9-e8ba0cba92de",
+      "elapsed_ms": 744,
+      "sample_count": 40,
+      "feature_count": 18,
+      "anomaly_candidate_count": 4,
+      "top_event_ids": [
+        "1e10d6aa-0c3d-401b-b9e8-87f7f529869e",
+        "68af713c-eb39-4825-b271-88a163e9901d",
+        "842e21e1-93bb-4ca0-8e6a-62f720731d68",
+        "f075d471-c605-4164-8ec5-3bbc305d1921",
+        "f9d58091-07b5-492c-bcf9-a19c4a4f9bf1",
+        "4545445c-111f-401a-b315-5df134f2063a",
+        "3228230b-b63e-43b1-ba90-33385d92782d",
+        "0a795561-e112-4f3a-a5fe-9273840a6f5b",
+        "0b526b54-bfe9-47a1-a9a1-8035a6cddc2d",
+        "04b1d35f-ec16-4b06-9c9a-4a8c32a75ab3",
+        "ed29db94-7f8e-4ca8-a029-a9d8c4fe4871",
+        "70ae615f-2d70-4b64-b6b7-98c33e457d9a",
+        "9de5f975-59ae-4621-b6b3-b3266c994b6b",
+        "c43f9d5d-dce7-49b2-8acd-f3289483997f",
+        "306ee15a-e902-4d2a-9d13-7e05001aa7c6",
+        "644e417b-8a3b-421d-a587-20a923d12829",
+        "6dc7f850-b04d-448b-89c3-133bc3bc1bab",
+        "fc7a230a-b5d5-4904-9dd3-5394fb44b898",
+        "d70c38f0-666a-470c-b9d9-c079a277a1ac",
+        "7c00544d-dd1d-46fe-a4de-c45798506ee1",
+        "cb896b8a-38e8-46d8-9b9f-3f1f4c26d22e",
+        "70b01dcf-7f32-4012-8048-8af80a04f28b",
+        "7625a70c-ee74-4ebe-99fd-2630982e81b0",
+        "ec6803b1-1092-40b8-9cd1-1519551a582d",
+        "12e8f0f9-f78d-4182-aaa5-553f70132717"
+      ]
+    },
+    {
+      "run_id": "a7fd8ac7-4160-4aef-bcc5-016ec9eab92f",
+      "elapsed_ms": 82,
+      "sample_count": 40,
+      "feature_count": 18,
+      "anomaly_candidate_count": 4,
+      "top_event_ids": [
+        "1e10d6aa-0c3d-401b-b9e8-87f7f529869e",
+        "68af713c-eb39-4825-b271-88a163e9901d",
+        "842e21e1-93bb-4ca0-8e6a-62f720731d68",
+        "f075d471-c605-4164-8ec5-3bbc305d1921",
+        "f9d58091-07b5-492c-bcf9-a19c4a4f9bf1",
+        "4545445c-111f-401a-b315-5df134f2063a",
+        "3228230b-b63e-43b1-ba90-33385d92782d",
+        "0a795561-e112-4f3a-a5fe-9273840a6f5b",
+        "0b526b54-bfe9-47a1-a9a1-8035a6cddc2d",
+        "04b1d35f-ec16-4b06-9c9a-4a8c32a75ab3",
+        "ed29db94-7f8e-4ca8-a029-a9d8c4fe4871",
+        "70ae615f-2d70-4b64-b6b7-98c33e457d9a",
+        "9de5f975-59ae-4621-b6b3-b3266c994b6b",
+        "c43f9d5d-dce7-49b2-8acd-f3289483997f",
+        "306ee15a-e902-4d2a-9d13-7e05001aa7c6",
+        "644e417b-8a3b-421d-a587-20a923d12829",
+        "6dc7f850-b04d-448b-89c3-133bc3bc1bab",
+        "fc7a230a-b5d5-4904-9dd3-5394fb44b898",
+        "d70c38f0-666a-470c-b9d9-c079a277a1ac",
+        "7c00544d-dd1d-46fe-a4de-c45798506ee1",
+        "cb896b8a-38e8-46d8-9b9f-3f1f4c26d22e",
+        "70b01dcf-7f32-4012-8048-8af80a04f28b",
+        "7625a70c-ee74-4ebe-99fd-2630982e81b0",
+        "ec6803b1-1092-40b8-9cd1-1519551a582d",
+        "12e8f0f9-f78d-4182-aaa5-553f70132717"
+      ]
+    }
+  ],
+  "notes": [
+    "This validates IsolationForest execution, score contract, persistence, audit and repeatability only.",
+    "The fixture is synthetic and is not a labeled holdout; no precision, recall, PR-AUC or production detection-quality claim is made.",
+    "Anomaly scores are relative triage signals, not maliciousness probabilities."
+  ]
+}
