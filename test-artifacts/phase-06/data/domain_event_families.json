@@ -1,0 +1,37 @@
+{
+  "ecommerce": [
+    "account_takeover",
+    "payment_abuse",
+    "promotion_abuse",
+    "checkout_anomaly",
+    "admin_access"
+  ],
+  "telecom": [
+    "sim_swap",
+    "subscriber_account_abuse",
+    "signalling_anomaly",
+    "cdr_anomaly",
+    "privileged_network_change"
+  ],
+  "logistics": [
+    "shipment_route_deviation",
+    "warehouse_access_abuse",
+    "fleet_device_compromise",
+    "manifest_tampering",
+    "partner_api_abuse"
+  ],
+  "cloud_saas": [
+    "credential_abuse",
+    "privilege_escalation",
+    "public_resource_exposure",
+    "control_plane_anomaly",
+    "data_exfiltration"
+  ],
+  "financial_services": [
+    "account_takeover",
+    "transaction_abuse",
+    "privileged_access_abuse",
+    "api_abuse",
+    "sensitive_data_access"
+  ]
+}

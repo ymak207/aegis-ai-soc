@@ -422,6 +422,20 @@ def test_anomaly_feature_extraction_is_bounded_and_domain_aware():
         "raw": {"_aegis_domain": "cloud_saas"}})
     assert row["event_type"] == "authentication_failure"
     assert row["domain"] == "cloud_saas"
-    assert row["src_ip_prefix"] == "198.51.100"
-    assert row["has_username"] is True
     assert row["hour_utc"] == 8.0
+    assert row["weekday_utc"] == 1.0
+    assert len(row) == 6
+    assert "src_ip_prefix" not in row
+    assert "has_username" not in row
+    assert "has_host" not in row
+
+
+def test_anomaly_features_are_independent_of_optional_identity_and_ip_fields():
+    from app.main import anomaly_feature_row
+    base = {
+        "event_time": "2026-10-27T08:00:00Z", "source": "lab",
+        "event_type": "normal_activity", "severity": "low", "domain": "cloud_saas",
+        "src_ip": "198.51.100.23", "username": "employee-01", "host": "workstation-01", "raw": {},
+    }
+    sparse = {**base, "src_ip": None, "username": None, "host": None}
+    assert anomaly_feature_row(base) == anomaly_feature_row(sparse)

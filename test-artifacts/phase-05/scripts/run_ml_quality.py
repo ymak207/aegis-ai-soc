@@ -117,7 +117,7 @@ def validate_run(label, status, result, details, expected):
     contract = (
         status == 200
         and result.get("model_name") == "IsolationForest"
-        and result.get("model_version") == "aegis-iforest-v1"
+        and result.get("model_version") == "aegis-iforest-v2"
         and result.get("training_mode") == "unsupervised-on-recent-stored-events"
     )
     check(f"{label}_model_contract", contract, {
@@ -158,8 +158,10 @@ try:
     status, invalid, _ = request("/api/v1/ml/anomaly/run?limit=19", "POST")
     check("reject_limit_below_20", status == 422, {"http_status": status, "response": invalid})
 
-    # Give all events current timestamps while preserving order. API reads newest N.
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    # Keep this fixture newer than ordinary telemetry and any prior Phase 05 run.
+    # Preserve microseconds so back-to-back executions do not create identical
+    # timestamp windows. The API currently selects the newest events globally.
+    now = datetime.now(timezone.utc) + timedelta(days=365)
     payload = []
     for index, item in enumerate(records):
         event = {k: v for k, v in item.items() if k not in ("case", "label")}

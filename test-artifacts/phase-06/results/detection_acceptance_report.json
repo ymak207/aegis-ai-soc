@@ -1,0 +1,883 @@
+{
+  "phase": "06",
+  "run_id": "P06-3132acce43ff",
+  "status": "PASS",
+  "fixture_count": 34,
+  "domain_family_count": 25,
+  "created_event_ids": [
+    "82fecb1c-dc3d-4355-877e-ffecc2d61373",
+    "a36611e8-8fa3-4ce5-988c-f997bfbf478a",
+    "d7dded21-2ed4-4706-b535-734f9477d2e4",
+    "2c7cea67-877b-4d6c-a94b-f854c9e90341",
+    "e61a8cb8-66af-4757-b1be-74db1527c87c",
+    "479fbf40-2215-47fe-9e01-b52354a6dd15",
+    "d75b0b07-07ba-4c4b-8602-740b7a5242f6",
+    "e3aa4376-ae2f-4e82-bbc2-f1fc5a15ccd5",
+    "3f89b187-65d7-4f32-9bc2-0b92447f65f1",
+    "a2e13519-3e26-4620-82f0-9151210d7f37",
+    "f88bd698-1c5e-4275-b863-e222928b4e9a",
+    "87fb504e-ebf0-43d2-ba24-4710b0524121",
+    "22f6bb35-13bb-42e1-8a7e-93e63112653c",
+    "5a892eee-122b-4340-ac9d-2b10d9fde452",
+    "d4c83eaf-1063-4937-b49e-9caab19544fd",
+    "229da02a-78b2-4e88-b7be-7eb0a05335b5",
+    "79abfaec-c5f3-4d07-8404-1ed73634310a",
+    "9bb22b41-4baa-4828-91e3-bd1ec658e9bd",
+    "ccf29ac8-d591-482e-8563-629dcfbaf0a4",
+    "b69e04b9-b2fd-4641-9f7e-4f0fe27d679b",
+    "a79c4282-814c-47db-88e8-7c3b155c564e",
+    "34d91d85-42ae-4dba-a168-4535f60876bb",
+    "99298bca-20ce-4db7-a863-c2938a326730",
+    "d47509b5-f9e9-4cb1-be9a-ba5241f91539",
+    "a1ce3919-2f44-4ada-8d66-df6ba21a7ba4",
+    "48020b1a-27f6-4a89-a8f1-a33f67f73b0d",
+    "17e0c21d-13c6-43b2-932d-9158d3d26d84",
+    "68c93632-11ca-46f2-94a6-df34247e447f",
+    "90686d14-14c6-4b4b-a726-678118f0061e",
+    "31673717-f6c6-4f66-a739-829e0922b646",
+    "a41fa6d3-effb-440c-bcf0-5cf76e2cd50e",
+    "34574013-6f6a-4ca6-b49d-123bd6a2622c",
+    "0630ecfe-9d1a-464d-9573-efc66ef07a38",
+    "b99d850a-fdaf-40eb-b05f-b35155fd1b50"
+  ],
+  "alert_ids": [
+    "ff1cf3d2-6308-45a1-bd5d-e4304dceed8c",
+    "0f9c408e-fff2-4664-a8ea-d42b8aadb764",
+    "46cf89f4-aa1c-4315-9eaa-f453b948f978",
+    "ee612999-3096-41f0-8cfc-0e6cb96c759a",
+    "b3a8b5d3-4adf-4dbe-a46d-450438d91060",
+    "a644294a-1838-4def-b8d7-77f87763fd75",
+    "9e6cd399-5709-4b40-8bb8-81de32030857",
+    "cf862cee-248d-41a4-9250-0bdf71bda75e",
+    "f7286fc5-7c85-4ddc-90a4-b594bd2cf765",
+    "55597ca6-7612-4da6-9b91-599ba944a12b",
+    "a4395b76-7b5a-46b7-9d65-5a89ba3f0523",
+    "b6ad13a1-3af1-4c36-a850-aea0373bb5c5",
+    "21fcef3d-032d-43f0-91d1-131025c5deda",
+    "f94e80f8-030a-4c49-9709-5162fbaadeae",
+    "ef3d0f68-7df9-4eef-850d-e19eff76816b",
+    "61ded406-16ec-4d87-9375-bd4ceba6b9e2",
+    "d3530ff2-b21d-45c3-b744-26890e22ca7b",
+    "2e2bbd14-737b-484c-8f22-9f13a775ec63",
+    "42e5f6e3-b4aa-4471-8d08-8a7a52353d34",
+    "c8664971-e48b-4bd5-9036-4884e87a6798",
+    "3f3aaa99-f486-4c13-bcb8-23c7eadc7a4a",
+    "3b2438d7-1f4c-4fee-985d-e01f5d41138d",
+    "112f56d5-9750-4164-ad32-bb889e8ec449",
+    "4d0ca88a-ccf4-4ead-8433-7f6005557521",
+    "96bdee1e-d84d-4ca3-81f0-6d24b73d7444",
+    "a7900925-d381-4241-aab4-e26e4c0afb70",
+    "1d6e2726-7b96-46ec-b5f0-23d70aef1e4d",
+    "f329a192-b386-4a84-b44c-7a95ed4a3000",
+    "7f479515-4eac-40ff-82f4-5215cd5308db",
+    "4d5bbd01-af1a-48f0-9e9e-e99bd65ed650",
+    "9b50a94d-ee5e-4a47-bb23-ea3ecf7730be",
+    "a1609d59-07ea-4b24-a32a-d8cdbc0af967",
+    "b3a1a72a-75da-40ea-b9a3-bdcf33446f62",
+    "8371e724-2b0e-4995-98e9-428af493543b",
+    "e729b2ed-f81a-43ac-a194-b946b2ba38f3"
+  ],
+  "known_heuristic_false_positive_cases": 2,
+  "duration_seconds": 0.037,
+  "checks": [
+    {
+      "name": "batch_accepts_all_fixtures",
+      "status": "PASS",
+      "detail": {
+        "expected": 34,
+        "accepted": 34,
+        "items": 34
+      }
+    },
+    {
+      "name": "domain:account_takeover_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "ff1cf3d2-6308-45a1-bd5d-e4304dceed8c"
+        ],
+        "expected_rule": "DOMAIN-ECOMMERCE-001"
+      }
+    },
+    {
+      "name": "domain:payment_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "0f9c408e-fff2-4664-a8ea-d42b8aadb764"
+        ],
+        "expected_rule": "DOMAIN-ECOMMERCE-001"
+      }
+    },
+    {
+      "name": "domain:promotion_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "46cf89f4-aa1c-4315-9eaa-f453b948f978"
+        ],
+        "expected_rule": "DOMAIN-ECOMMERCE-001"
+      }
+    },
+    {
+      "name": "domain:checkout_anomaly_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "ee612999-3096-41f0-8cfc-0e6cb96c759a"
+        ],
+        "expected_rule": "DOMAIN-ECOMMERCE-001"
+      }
+    },
+    {
+      "name": "domain:admin_access_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "b3a8b5d3-4adf-4dbe-a46d-450438d91060"
+        ],
+        "expected_rule": "DOMAIN-ECOMMERCE-001"
+      }
+    },
+    {
+      "name": "domain:sim_swap_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "a644294a-1838-4def-b8d7-77f87763fd75"
+        ],
+        "expected_rule": "DOMAIN-TELECOM-001"
+      }
+    },
+    {
+      "name": "domain:subscriber_account_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "9e6cd399-5709-4b40-8bb8-81de32030857"
+        ],
+        "expected_rule": "DOMAIN-TELECOM-001"
+      }
+    },
+    {
+      "name": "domain:signalling_anomaly_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "cf862cee-248d-41a4-9250-0bdf71bda75e"
+        ],
+        "expected_rule": "DOMAIN-TELECOM-001"
+      }
+    },
+    {
+      "name": "domain:cdr_anomaly_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "f7286fc5-7c85-4ddc-90a4-b594bd2cf765"
+        ],
+        "expected_rule": "DOMAIN-TELECOM-001"
+      }
+    },
+    {
+      "name": "domain:privileged_network_change_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "55597ca6-7612-4da6-9b91-599ba944a12b"
+        ],
+        "expected_rule": "DOMAIN-TELECOM-001"
+      }
+    },
+    {
+      "name": "domain:shipment_route_deviation_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "a4395b76-7b5a-46b7-9d65-5a89ba3f0523"
+        ],
+        "expected_rule": "DOMAIN-LOGISTICS-001"
+      }
+    },
+    {
+      "name": "domain:warehouse_access_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "b6ad13a1-3af1-4c36-a850-aea0373bb5c5"
+        ],
+        "expected_rule": "DOMAIN-LOGISTICS-001"
+      }
+    },
+    {
+      "name": "domain:fleet_device_compromise_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "21fcef3d-032d-43f0-91d1-131025c5deda"
+        ],
+        "expected_rule": "DOMAIN-LOGISTICS-001"
+      }
+    },
+    {
+      "name": "domain:manifest_tampering_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "f94e80f8-030a-4c49-9709-5162fbaadeae"
+        ],
+        "expected_rule": "DOMAIN-LOGISTICS-001"
+      }
+    },
+    {
+      "name": "domain:partner_api_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "ef3d0f68-7df9-4eef-850d-e19eff76816b"
+        ],
+        "expected_rule": "DOMAIN-LOGISTICS-001"
+      }
+    },
+    {
+      "name": "domain:credential_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "61ded406-16ec-4d87-9375-bd4ceba6b9e2"
+        ],
+        "expected_rule": "DOMAIN-CLOUD_SAAS-001"
+      }
+    },
+    {
+      "name": "domain:privilege_escalation_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "d3530ff2-b21d-45c3-b744-26890e22ca7b",
+          "2e2bbd14-737b-484c-8f22-9f13a775ec63"
+        ],
+        "expected_rule": "DOMAIN-CLOUD_SAAS-001"
+      }
+    },
+    {
+      "name": "domain:public_resource_exposure_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "42e5f6e3-b4aa-4471-8d08-8a7a52353d34"
+        ],
+        "expected_rule": "DOMAIN-CLOUD_SAAS-001"
+      }
+    },
+    {
+      "name": "domain:control_plane_anomaly_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "c8664971-e48b-4bd5-9036-4884e87a6798"
+        ],
+        "expected_rule": "DOMAIN-CLOUD_SAAS-001"
+      }
+    },
+    {
+      "name": "domain:data_exfiltration_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "3f3aaa99-f486-4c13-bcb8-23c7eadc7a4a"
+        ],
+        "expected_rule": "DOMAIN-CLOUD_SAAS-001"
+      }
+    },
+    {
+      "name": "domain:account_takeover_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "3b2438d7-1f4c-4fee-985d-e01f5d41138d"
+        ],
+        "expected_rule": "DOMAIN-FINANCIAL_SERVICES-001"
+      }
+    },
+    {
+      "name": "domain:transaction_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "112f56d5-9750-4164-ad32-bb889e8ec449"
+        ],
+        "expected_rule": "DOMAIN-FINANCIAL_SERVICES-001"
+      }
+    },
+    {
+      "name": "domain:privileged_access_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "4d0ca88a-ccf4-4ead-8433-7f6005557521"
+        ],
+        "expected_rule": "DOMAIN-FINANCIAL_SERVICES-001"
+      }
+    },
+    {
+      "name": "domain:api_abuse_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "96bdee1e-d84d-4ca3-81f0-6d24b73d7444"
+        ],
+        "expected_rule": "DOMAIN-FINANCIAL_SERVICES-001"
+      }
+    },
+    {
+      "name": "domain:sensitive_data_access_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "a7900925-d381-4241-aab4-e26e4c0afb70"
+        ],
+        "expected_rule": "DOMAIN-FINANCIAL_SERVICES-001"
+      }
+    },
+    {
+      "name": "general:authentication_failure_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "1d6e2726-7b96-46ec-b5f0-23d70aef1e4d"
+        ],
+        "expected_rule": "AUTH-001"
+      }
+    },
+    {
+      "name": "general:failed_login_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "f329a192-b386-4a84-b44c-7a95ed4a3000"
+        ],
+        "expected_rule": "AUTH-001"
+      }
+    },
+    {
+      "name": "general:threat_indicator_match_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "7f479515-4eac-40ff-82f4-5215cd5308db"
+        ],
+        "expected_rule": "NET-001"
+      }
+    },
+    {
+      "name": "general:suspicious_process_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "4d5bbd01-af1a-48f0-9e9e-e99bd65ed650"
+        ],
+        "expected_rule": "ENDPOINT-001"
+      }
+    },
+    {
+      "name": "general:malware_detected_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "9b50a94d-ee5e-4a47-bb23-ea3ecf7730be"
+        ],
+        "expected_rule": "ENDPOINT-001"
+      }
+    },
+    {
+      "name": "general:privilege_escalation_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "a1609d59-07ea-4b24-a32a-d8cdbc0af967",
+          "b3a1a72a-75da-40ea-b9a3-bdcf33446f62"
+        ],
+        "expected_rule": "PRIV-001"
+      }
+    },
+    {
+      "name": "routine_health_check_no_alert",
+      "status": "PASS",
+      "detail": {
+        "alerts": []
+      }
+    },
+    {
+      "name": "known_fp:mimikatz_educational_text_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "8371e724-2b0e-4995-98e9-428af493543b"
+        ],
+        "expected_rule": "BEHAVIOR-001"
+      }
+    },
+    {
+      "name": "known_fp:powershell_educational_text_alert_created",
+      "status": "PASS",
+      "detail": {
+        "alerts": [
+          "e729b2ed-f81a-43ac-a194-b946b2ba38f3"
+        ],
+        "expected_rule": "BEHAVIOR-001"
+      }
+    },
+    {
+      "name": "domain:account_takeover_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-ECOMMERCE-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-ECOMMERCE-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:payment_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-ECOMMERCE-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-ECOMMERCE-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:promotion_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-ECOMMERCE-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-ECOMMERCE-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:checkout_anomaly_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-ECOMMERCE-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-ECOMMERCE-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:admin_access_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-ECOMMERCE-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-ECOMMERCE-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:sim_swap_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-TELECOM-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-TELECOM-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:subscriber_account_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-TELECOM-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-TELECOM-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:signalling_anomaly_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-TELECOM-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-TELECOM-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:cdr_anomaly_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-TELECOM-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-TELECOM-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:privileged_network_change_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-TELECOM-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-TELECOM-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:shipment_route_deviation_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-LOGISTICS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-LOGISTICS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:warehouse_access_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-LOGISTICS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-LOGISTICS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:fleet_device_compromise_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-LOGISTICS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-LOGISTICS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:manifest_tampering_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-LOGISTICS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-LOGISTICS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:partner_api_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-LOGISTICS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-LOGISTICS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:credential_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-CLOUD_SAAS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-CLOUD_SAAS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:privilege_escalation_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-CLOUD_SAAS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-CLOUD_SAAS-001",
+            "severity": "high"
+          },
+          {
+            "rule_id": "PRIV-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:public_resource_exposure_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-CLOUD_SAAS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-CLOUD_SAAS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:control_plane_anomaly_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-CLOUD_SAAS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-CLOUD_SAAS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:data_exfiltration_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-CLOUD_SAAS-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-CLOUD_SAAS-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:account_takeover_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-FINANCIAL_SERVICES-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-FINANCIAL_SERVICES-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:transaction_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-FINANCIAL_SERVICES-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-FINANCIAL_SERVICES-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:privileged_access_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-FINANCIAL_SERVICES-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-FINANCIAL_SERVICES-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:api_abuse_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-FINANCIAL_SERVICES-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-FINANCIAL_SERVICES-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "domain:sensitive_data_access_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "DOMAIN-FINANCIAL_SERVICES-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-FINANCIAL_SERVICES-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "general:authentication_failure_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "AUTH-001",
+        "observed": [
+          {
+            "rule_id": "AUTH-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "general:failed_login_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "AUTH-001",
+        "observed": [
+          {
+            "rule_id": "AUTH-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "general:threat_indicator_match_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "NET-001",
+        "observed": [
+          {
+            "rule_id": "NET-001",
+            "severity": "critical"
+          }
+        ]
+      }
+    },
+    {
+      "name": "general:suspicious_process_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "ENDPOINT-001",
+        "observed": [
+          {
+            "rule_id": "ENDPOINT-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "general:malware_detected_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "ENDPOINT-001",
+        "observed": [
+          {
+            "rule_id": "ENDPOINT-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "general:privilege_escalation_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "PRIV-001",
+        "observed": [
+          {
+            "rule_id": "DOMAIN-CLOUD_SAAS-001",
+            "severity": "high"
+          },
+          {
+            "rule_id": "PRIV-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "known_fp:mimikatz_educational_text_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "BEHAVIOR-001",
+        "observed": [
+          {
+            "rule_id": "BEHAVIOR-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "known_fp:powershell_educational_text_rule_mapping",
+      "status": "PASS",
+      "detail": {
+        "expected": "BEHAVIOR-001",
+        "observed": [
+          {
+            "rule_id": "BEHAVIOR-001",
+            "severity": "high"
+          }
+        ]
+      }
+    },
+    {
+      "name": "exact_replay_idempotent",
+      "status": "PASS",
+      "detail": {
+        "event_id": "82fecb1c-dc3d-4355-877e-ffecc2d61373",
+        "duplicate": true,
+        "alerts": []
+      }
+    }
+  ],
+  "limitations": [
+    "Synthetic contract fixtures only; not production efficacy validation.",
+    "Domain matches are generic analyst-review alerts.",
+    "Substring heuristic matches educational text."
+  ]
+}

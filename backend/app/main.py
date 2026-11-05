@@ -1231,16 +1231,11 @@ def anomaly_feature_row(event: dict) -> dict[str, Any]:
         when = datetime.now(timezone.utc)
     if when.tzinfo is None:
         when = when.replace(tzinfo=timezone.utc)
-    ip = str(event.get("src_ip") or "")
-    ip_prefix = ".".join(ip.split(".")[:3]) if re.fullmatch(r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}", ip) else "unknown"
     return {
         "event_type": str(event.get("event_type") or "unknown"),
         "source": str(event.get("source") or "unknown"),
         "severity": str(event.get("severity") or "unknown"),
         "domain": str(raw.get("_aegis_domain") or event.get("domain") or "unknown"),
-        "src_ip_prefix": ip_prefix,
-        "has_username": bool(event.get("username")),
-        "has_host": bool(event.get("host")),
         "hour_utc": float(when.hour),
         "weekday_utc": float(when.weekday()),
     }
@@ -1544,11 +1539,12 @@ def run_anomaly_detection(limit: int = Query(default=1000, ge=20, le=5000)):
             "features": features})
     scored.sort(key=lambda item: item["anomaly_score"], reverse=True)
     run_id = str(uuid.uuid4())
-    report = {"model_name": "IsolationForest", "model_version": "aegis-iforest-v1", "sample_count": len(records),
+    report = {"model_name": "IsolationForest", "model_version": "aegis-iforest-v2", "sample_count": len(records),
         "feature_count": len(vectorizer.get_feature_names_out()), "training_mode": "unsupervised-on-recent-stored-events",
         "anomaly_candidate_count": sum(1 for item in scored if item["model_label"] == "anomaly_candidate"),
         "top_anomalies": scored[:25], "limitations": [
             "This is an unsupervised baseline trained on the current selected event population; contaminated or synthetic data changes the baseline.",
+            "Identity-field presence and IP-prefix features are excluded in v2 because missing optional telemetry dominated the v1 ranking in the Phase 05 synthetic robustness fixture.",
             "Anomaly scores are prioritization signals, not maliciousness probabilities or confirmed incidents.",
             "No durable fitted model artifact, drift monitor, or labeled quality score is claimed in this release."]}
     with connect() as conn:

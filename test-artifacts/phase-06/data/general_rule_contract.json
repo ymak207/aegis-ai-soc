@@ -1,0 +1,8 @@
+{
+  "authentication_failure": "AUTH-001",
+  "failed_login": "AUTH-001",
+  "threat_indicator_match": "NET-001",
+  "suspicious_process": "ENDPOINT-001",
+  "malware_detected": "ENDPOINT-001",
+  "privilege_escalation": "PRIV-001"
+}
