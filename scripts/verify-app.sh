@@ -15,7 +15,7 @@ if [[ "$ready" != 1 ]]; then echo "API readiness timed out; recent logs:" >&2; s
 cat /tmp/aegis-ready.json >&2
 curl --fail --silent http://127.0.0.1:8000/api/v1 >&2
 echo
-curl --noproxy '*' --fail --silent --show-error --output /dev/null --write-out 'Frontend HTTP %{http_code}\n' http://127.0.0.1:5173/ >&2
+curl --noproxy '*' --retry 10 --retry-connrefused --retry-delay 2 --fail --silent --show-error --output /dev/null --write-out 'Frontend HTTP %{http_code}\n' http://127.0.0.1:5173/ >&2
 echo
 sudo docker compose exec -T api python -m pytest -q /app/tests
 echo "== Verify Lab catalog and end-to-end synthetic suite =="
@@ -41,7 +41,7 @@ python3 - <<'PYVERIFY'
 import json,sys
 p=json.load(open('/tmp/aegis-ml-run.json'))
 print(f"ML run {p.get('run_id')}: model={p.get('model_name')} samples={p.get('sample_count')} candidates={p.get('anomaly_candidate_count')}")
-if p.get('model_version') != 'aegis-iforest-v1' or p.get('sample_count',0) < 20: sys.exit('ML baseline output invalid')
+if p.get('model_version') != 'aegis-iforest-v2' or p.get('sample_count',0) < 20: sys.exit('ML baseline output invalid')
 PYVERIFY
 echo "== Verify frontend TypeScript and production build =="
 sudo docker compose exec -T frontend npm test
